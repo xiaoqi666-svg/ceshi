@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>今日校园</title>
 <style>
 *{box-sizing:border-box}
@@ -1745,6 +1745,20 @@ select{
 .usage-notice-agree:not(.is-locked){
   touch-action:manipulation;
   -webkit-tap-highlight-color:rgba(40,127,230,.12);
+}
+</style>
+
+
+<style id="ios-disable-zoom-v5">
+html, body, .app{
+  touch-action:pan-x pan-y;
+}
+input, textarea, select, button{
+  touch-action:manipulation;
+}
+/* iOS Safari can auto-zoom inputs below 16px. Force 16px minimum. */
+input, textarea, select{
+  font-size:16px!important;
 }
 </style>
 
@@ -4640,6 +4654,39 @@ if ("serviceWorker" in navigator && (location.protocol === "https:" || location.
   try{
     window.scrollTo(0,0);
   }catch(e){}
+})();
+</script>
+
+
+<script id="ios-disable-zoom-script-v5">
+(function(){
+  "use strict";
+
+  function preventGesture(event){
+    event.preventDefault();
+  }
+
+  // iOS Safari / standalone PWA proprietary pinch gesture events.
+  document.addEventListener("gesturestart", preventGesture, {passive:false, capture:true});
+  document.addEventListener("gesturechange", preventGesture, {passive:false, capture:true});
+  document.addEventListener("gestureend", preventGesture, {passive:false, capture:true});
+
+  // Standards fallback: block any multi-touch move used for pinch zoom.
+  document.addEventListener("touchmove", function(event){
+    if(event.touches && event.touches.length > 1){
+      event.preventDefault();
+    }
+  }, {passive:false, capture:true});
+
+  // Prevent double-tap zoom without interfering with ordinary single taps.
+  let lastTouchEnd = 0;
+  document.addEventListener("touchend", function(event){
+    const now = Date.now();
+    if(now - lastTouchEnd <= 300){
+      event.preventDefault();
+    }
+    lastTouchEnd = now;
+  }, {passive:false, capture:true});
 })();
 </script>
 
