@@ -1625,7 +1625,7 @@ html[data-nav-direction="back"]::view-transition-new(root){
 </style>
 
 
-<style id="ios-native-app-feel-v3">
+<style id="ios-appfeel-clean-v11">
 html{
   width:100%;
   height:100%;
@@ -1639,19 +1639,16 @@ body{
   margin:0;
   overflow:hidden!important;
   overscroll-behavior:none!important;
-  position:relative;
   -webkit-text-size-adjust:100%;
   -webkit-tap-highlight-color:transparent;
 }
 .app{
-  position:relative!important;
   width:100%!important;
   height:100%!important;
   height:100dvh!important;
   min-height:0!important;
   overflow:hidden!important;
   margin:0!important;
-  background:#fff;
 }
 .dashboard-page,
 .leave-type-page,
@@ -1664,19 +1661,8 @@ body{
   min-height:0!important;
   overflow-x:hidden!important;
   overflow-y:auto!important;
-  overscroll-behavior-x:none!important;
-  overscroll-behavior-y:none!important;
+  overscroll-behavior:none!important;
   -webkit-overflow-scrolling:touch;
-  touch-action:pan-y;
-  scrollbar-width:none;
-}
-.dashboard-page::-webkit-scrollbar,
-.leave-type-page::-webkit-scrollbar,
-.form-page::-webkit-scrollbar,
-.detail-page::-webkit-scrollbar{
-  width:0;
-  height:0;
-  display:none;
 }
 .activation-page{
   position:fixed!important;
@@ -1690,20 +1676,6 @@ body{
   overscroll-behavior:none!important;
   -webkit-overflow-scrolling:touch;
 }
-.usage-notice-scroll,
-.latest-notice-card,
-.support-modal-card,
-.app-more-sheet{
-  overscroll-behavior:contain!important;
-}
-.dashboard-tabs,
-.leave-type-tabs,
-.submit-wrap,
-.detail-bottom{
-  transform:translateZ(0);
-  -webkit-transform:translateZ(0);
-  backface-visibility:hidden;
-}
 button,
 [role="button"],
 .quick-item.actionable,
@@ -1711,56 +1683,14 @@ button,
   touch-action:manipulation;
   -webkit-tap-highlight-color:transparent;
 }
-body,
-.app,
-.dashboard-page,
-.leave-type-page,
-.form-page,
-.detail-page{
-  max-width:100vw;
-}
-input,
-textarea,
-select{
-  touch-action:auto;
-}
 </style>
 
 
-<style id="usage-notice-ios-bottom-fix-v4">
-/*
- * iPhone PWA 使用须知到底解锁修复：
- * 不再依赖原生 disabled，避免 Safari 在动态切换 disabled 后触摸状态异常。
- */
-.usage-notice-agree.is-locked{
-  background:#b9c9da!important;
-  box-shadow:none!important;
-  color:#f6f8fa!important;
-  cursor:default!important;
-  opacity:1!important;
-}
-.usage-notice-agree.is-locked:active{
-  transform:none!important;
-}
-.usage-notice-agree:not(.is-locked){
-  touch-action:manipulation;
-  -webkit-tap-highlight-color:rgba(40,127,230,.12);
-}
+<style id="ios-nozoom-clean-v11">
+input,textarea,select{font-size:16px!important}
+button,[role="button"]{touch-action:manipulation}
 </style>
 
-
-<style id="ios-disable-zoom-v5">
-html, body, .app{
-  touch-action:pan-x pan-y;
-}
-input, textarea, select, button{
-  touch-action:manipulation;
-}
-/* iOS Safari can auto-zoom inputs below 16px. Force 16px minimum. */
-input, textarea, select{
-  font-size:16px!important;
-}
-</style>
 </head>
 <body class="license-locked">
 
@@ -1788,7 +1718,13 @@ input, textarea, select{
         <div class="usage-notice-end">— 已阅读至底部 —</div>
       </div>
     </div>
-<label class="usage-notice-option">
+
+    <div id="usageNoticeReadHint" class="usage-notice-read-hint">
+      <span class="usage-notice-read-arrow"></span>
+      <span id="usageNoticeReadText">请向下阅读至底部后再确认</span>
+    </div>
+
+    <label class="usage-notice-option">
       <input id="usageNoticeSkipCheck" type="checkbox">
       <span class="usage-notice-check"></span>
       <span>下次打开不再提醒</span>
@@ -1801,7 +1737,7 @@ input, textarea, select{
 
     <div class="usage-notice-actions">
       <button id="usageNoticeDisagreeBtn" class="usage-notice-btn usage-notice-disagree" type="button">不同意并退出</button>
-      <button id="usageNoticeAgreeBtn" class="usage-notice-btn usage-notice-agree" type="button">我已知晓并同意</button>
+      <button id="usageNoticeAgreeBtn" class="usage-notice-btn usage-notice-agree" type="button" disabled>请阅读至底部</button>
     </div>
   </div>
 </div>
@@ -3268,122 +3204,30 @@ let usageNoticeReadComplete = false;
 let pendingLatestNoticeAfterUsage = false;
 
 function setUsageNoticeReadState(done){
-  /*
-   * v9：取消“必须阅读到底才能同意”的限制。
-   * 同意按钮始终可用。
-   */
-  usageNoticeReadComplete = true;
-
+  usageNoticeReadComplete = !!done;
   const btn = $("usageNoticeAgreeBtn");
-  if(btn){
-    btn.disabled = false;
-    btn.classList.remove("is-locked");
-    btn.setAttribute("aria-disabled","false");
-    btn.textContent = "我已知晓并同意";
+  const hint = $("usageNoticeReadHint");
+  const text = $("usageNoticeReadText");
+  if(!btn) return;
+
+  btn.disabled = !usageNoticeReadComplete;
+  btn.textContent = usageNoticeReadComplete ? "我已知晓并同意" : "请阅读至底部";
+
+  if(hint){
+    hint.classList.toggle("done", usageNoticeReadComplete);
   }
-}
-
-function usageNoticeIsAtBottom(){
-  const scroller = $("usageNoticeScroll");
-  if(!scroller) return false;
-
-  /*
-   * iPhone 上 scrollTop/clientHeight/scrollHeight 可能受：
-   * - DPR 小数像素
-   * - safe-area
-   * - 字体缩放
-   * - momentum scrolling
-   * 影响，视觉到底时仍可能差十几像素。
-   */
-  const dpr = Math.max(1, Number(window.devicePixelRatio) || 1);
-  const tolerance = Math.max(32, Math.ceil(dpr * 12));
-
-  const remaining =
-    scroller.scrollHeight -
-    scroller.clientHeight -
-    scroller.scrollTop;
-
-  if(scroller.scrollHeight <= scroller.clientHeight + tolerance){
-    return true;
+  if(text){
+    text.textContent = usageNoticeReadComplete ? "已阅读完成，可以确认" : "请向下阅读至底部后再确认";
   }
-
-  if(remaining <= tolerance){
-    return true;
-  }
-
-  /*
-   * 第二套判断：直接观察正文最后的“已阅读至底部”标记。
-   * 即使 Safari 的 scrollHeight 计算存在误差，只要最后一行真正进入可视区，也视为完成。
-   */
-  const endMarker = scroller.querySelector(".usage-notice-end");
-  if(endMarker){
-    try{
-      const scrollRect = scroller.getBoundingClientRect();
-      const endRect = endMarker.getBoundingClientRect();
-
-      const markerReached =
-        endRect.top <= scrollRect.bottom + tolerance &&
-        endRect.bottom <= scrollRect.bottom + tolerance;
-
-      if(markerReached){
-        return true;
-      }
-    }catch(e){}
-  }
-
-  return false;
 }
 
 function checkUsageNoticeScroll(){
-  if(usageNoticeReadComplete) return true;
-
-  if(usageNoticeIsAtBottom()){
-    const bottomBtn = $("usageNoticeBottomConfirmBtn");
-    if(bottomBtn){
-      bottomBtn.classList.add("is-confirmed");
-      bottomBtn.setAttribute("aria-pressed","true");
-      bottomBtn.textContent = "✓ 已完成阅读";
-    }
-    setUsageNoticeReadState(true);
-    return true;
-  }
-
-  return false;
-}
-
-let usageNoticeBottomObserver = null;
-
-function installUsageNoticeBottomObserver(){
   const scroller = $("usageNoticeScroll");
-  if(!scroller) return;
+  if(!scroller || usageNoticeReadComplete) return;
 
-  if(usageNoticeBottomObserver){
-    try{ usageNoticeBottomObserver.disconnect(); }catch(e){}
-    usageNoticeBottomObserver = null;
-  }
-
-  const endMarker = scroller.querySelector(".usage-notice-end");
-
-  if(endMarker && "IntersectionObserver" in window){
-    try{
-      usageNoticeBottomObserver = new IntersectionObserver((entries)=>{
-        for(const entry of entries){
-          if(entry.isIntersecting || entry.intersectionRatio > 0){
-            /*
-             * IntersectionObserver 在 iOS momentum scroll 下通常比 scrollHeight
-             * 计算更可靠。进入底部区域后再用统一函数确认。
-             */
-            requestAnimationFrame(()=>checkUsageNoticeScroll());
-          }
-        }
-      },{
-        root:scroller,
-        threshold:[0,0.01,0.25,0.5,1],
-        rootMargin:"0px 0px 48px 0px"
-      });
-
-      usageNoticeBottomObserver.observe(endMarker);
-    }catch(e){}
+  const reachedBottom = scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 4;
+  if(reachedBottom){
+    setUsageNoticeReadState(true);
   }
 }
 
@@ -3413,21 +3257,22 @@ function openLatestNotice(forceOpen=false,source="startup"){
 }
 
 function openUsageNotice(forceOpen=false, source="startup"){
-  // v10：使用须知已停用。保留函数只为兼容旧调用。
+  // v11：使用须知永久停用，仅保留兼容函数。
   const mask = $("usageNoticeMask");
   if(mask) mask.classList.add("hidden");
   return false;
 }
 
 function initUsageNotice(){
-  /*
-   * v10：使用须知功能已取消。
-   * 启动时不再显示使用须知，保留“更新公告”的原有提醒能力。
-   */
-  setTimeout(()=>openLatestNotice(false,"startup"),60);
+  // v11：使用须知功能已停用。
+  const mask = $("usageNoticeMask");
+  if(mask) mask.classList.add("hidden");
+  return false;
 }
 
 function agreeUsageNotice(){
+  if(!usageNoticeReadComplete) return;
+
   const mask = $("usageNoticeMask");
   const check = $("usageNoticeSkipCheck");
 
@@ -3487,7 +3332,7 @@ function exitAppFromUsageNotice(){
 
 $("usageNoticeAgreeBtn").addEventListener("click",agreeUsageNotice);
 $("usageNoticeDisagreeBtn").addEventListener("click",exitAppFromUsageNotice);
-
+$("usageNoticeScroll").addEventListener("scroll",checkUsageNoticeScroll,{passive:true});
 $("latestNoticeAcknowledgeBtn").addEventListener("click",acknowledgeLatestNotice);
 
 function openMoreMenu(){
@@ -3583,6 +3428,12 @@ bindReliableTap($("announceEntryBtn"),()=>{
   closeMoreMenu();
   openLatestNotice(true,"more");
 });
+
+bindReliableTap($("noticeEntryBtn"),()=>{
+  closeMoreMenu();
+  openUsageNotice(true,"manual");
+});
+
 $("aboutSupportEntryBtn").addEventListener("click",()=>{
   closeMoreMenu();
   openSupportModal("more");
@@ -4480,131 +4331,86 @@ if ("serviceWorker" in navigator && (location.protocol === "https:" || location.
 </script>
 
 
-<script id="ios-native-app-feel-script-v3">
+<script id="ios-nozoom-clean-script-v11">
 (function(){
   "use strict";
 
-  if(!("ontouchstart" in window) && !(navigator.maxTouchPoints > 0)){
-    return;
+  function stopGesture(event){
+    event.preventDefault();
   }
 
-  let activeScroller = null;
-  let lastY = 0;
+  document.addEventListener("gesturestart",stopGesture,{passive:false});
+  document.addEventListener("gesturechange",stopGesture,{passive:false});
+  document.addEventListener("gestureend",stopGesture,{passive:false});
 
-  function canScrollY(el){
-    if(!el || el === document.documentElement || el === document.body) return false;
-
-    const style = window.getComputedStyle(el);
-    const overflowY = style.overflowY;
-    const scrollableStyle = overflowY === "auto" || overflowY === "scroll";
-    return scrollableStyle && el.scrollHeight > el.clientHeight + 1;
-  }
-
-  function findScroller(node){
-    let el = node && node.nodeType === 1 ? node : (node ? node.parentElement : null);
-
-    while(el && el !== document.body && el !== document.documentElement){
-      if(canScrollY(el)) return el;
-      el = el.parentElement;
-    }
-    return null;
-  }
-
-  let activeInteractiveTouch = false;
-
-  document.addEventListener("touchstart", function(event){
-    if(!event.touches || event.touches.length !== 1){
-      activeScroller = null;
-      activeInteractiveTouch = false;
-      return;
-    }
-
-    const target = event.target && event.target.nodeType === 1
-      ? event.target
-      : (event.target ? event.target.parentElement : null);
-
-    activeInteractiveTouch = !!(
-      target &&
-      target.closest &&
-      target.closest("button, input, textarea, select, label, a, [role='button']")
-    );
-
-    lastY = event.touches[0].clientY;
-    activeScroller = findScroller(event.target);
-  }, {passive:true, capture:true});
-
-  document.addEventListener("touchmove", function(event){
-    if(!event.touches || event.touches.length !== 1){
-      return;
-    }
-
-    const currentY = event.touches[0].clientY;
-    const deltaY = currentY - lastY;
-    lastY = currentY;
-
-    /*
-     * 交互控件上的触摸优先保证原生点击。
-     * 不让防回弹逻辑通过 preventDefault 吞掉 button click。
-     */
-    if(activeInteractiveTouch){
-      return;
-    }
-
-    if(!activeScroller){
-      event.preventDefault();
-      return;
-    }
-
-    const maxScrollTop = Math.max(
-      0,
-      activeScroller.scrollHeight - activeScroller.clientHeight
-    );
-
-    const atTop = activeScroller.scrollTop <= 0;
-    const atBottom = activeScroller.scrollTop >= maxScrollTop - 1;
-
-    if((atTop && deltaY > 0) || (atBottom && deltaY < 0)){
+  document.addEventListener("touchmove",function(event){
+    /* 只禁止两指及以上；单指滚动、输入、激活按钮完全放行。 */
+    if(event.touches && event.touches.length > 1){
       event.preventDefault();
     }
-  }, {passive:false, capture:true});
-
-  document.addEventListener("touchend", function(){
-    activeScroller = null;
-    activeInteractiveTouch = false;
-  }, {passive:true, capture:true});
-
-  document.addEventListener("touchcancel", function(){
-    activeScroller = null;
-    activeInteractiveTouch = false;
-  }, {passive:true, capture:true});
-
-  try{
-    window.scrollTo(0,0);
-  }catch(e){}
+  },{passive:false});
 })();
 </script>
 
 
-<script id="ios-disable-zoom-script-v5">
+<script id="license-diagnostic-v11">
 (function(){
   "use strict";
 
-  function preventGesture(event){
-    event.preventDefault();
+  function decodeB64urlAscii(value){
+    try{
+      let s=(value||"").replace(/-/g,"+").replace(/_/g,"/");
+      while(s.length%4) s+="=";
+      return atob(s);
+    }catch(e){
+      return "";
+    }
   }
 
-  // iOS Safari / standalone PWA proprietary pinch gesture events.
-  document.addEventListener("gesturestart", preventGesture, {passive:false, capture:true});
-  document.addEventListener("gesturechange", preventGesture, {passive:false, capture:true});
-  document.addEventListener("gestureend", preventGesture, {passive:false, capture:true});
+  function format24(code){
+    const v=(code||"").replace(/[^0-9A-F]/gi,"").toUpperCase();
+    return v.length===24 ? v.match(/.{1,4}/g).join("-") : v;
+  }
 
-  // Standards fallback: block any multi-touch move used for pinch zoom.
-  document.addEventListener("touchmove", function(event){
-    if(event.touches && event.touches.length > 1){
-      event.preventDefault();
+  function getBoundDeviceFromCard(card){
+    try{
+      const normalized=(card||"").trim().replace(/\s+/g,"");
+      const parts=normalized.split(".");
+      if(parts.length!==3 || parts[0]!=="TC2") return "";
+      const payload=decodeB64urlAscii(parts[1]);
+      const m=payload.match(/^TCAMPUS\|PERMDEV\|([0-9A-F]{24})\|[0-9A-F]{24}$/);
+      return m ? m[1] : "";
+    }catch(e){
+      return "";
     }
-  }, {passive:false, capture:true});
+  }
 
+  const state=document.getElementById("activationState");
+  const input=document.getElementById("licenseInput");
+  if(!state || !input || !window.MutationObserver) return;
+
+  let busy=false;
+  const observer=new MutationObserver(function(){
+    if(busy) return;
+    const text=state.textContent||"";
+
+    if(text.indexOf("该卡密绑定的设备与当前手机不一致")!==-1 &&
+       text.indexOf("卡密绑定：")===-1){
+      const bound=getBoundDeviceFromCard(input.value);
+      const current=(typeof CURRENT_DEVICE_CODE!=="undefined" ? CURRENT_DEVICE_CODE : "");
+
+      if(bound && current){
+        busy=true;
+        state.textContent =
+          "该卡密绑定的设备与当前手机不一致"
+          + "（卡密绑定："+format24(bound)
+          + "；当前："+format24(current)+"）";
+        busy=false;
+      }
+    }
+  });
+
+  observer.observe(state,{childList:true,subtree:true,characterData:true});
 })();
 </script>
 
