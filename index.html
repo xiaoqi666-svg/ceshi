@@ -1764,7 +1764,7 @@ input, textarea, select{
 </head>
 <body class="license-locked">
 
-<div id="usageNoticeMask" class="usage-notice-mask" role="dialog" aria-modal="true" aria-labelledby="usageNoticeTitle">
+<div id="usageNoticeMask" class="usage-notice-mask hidden" role="dialog" aria-modal="true" aria-labelledby="usageNoticeTitle">
   <div class="usage-notice-card">
     <div class="usage-notice-head">
       <div class="usage-notice-badge">使用前确认</div>
@@ -1853,20 +1853,7 @@ input, textarea, select{
 <div id="appMoreMask" class="app-more-mask hidden">
   <div class="app-more-sheet" role="dialog" aria-modal="true" aria-label="更多">
     <div class="app-more-title">更多</div>
-
-    <button id="noticeEntryBtn" class="app-more-item" type="button">
-      <span class="app-more-item-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-          <path d="M7 4h7l3 3v13H7z"></path>
-          <path d="M14 4v4h4"></path>
-          <path d="M10 12h4M10 16h4"></path>
-        </svg>
-      </span>
-      <span>使用须知</span>
-      <span class="app-more-item-arrow">›</span>
-    </button>
-
-    <button id="announceEntryBtn" class="app-more-item" type="button">
+<button id="announceEntryBtn" class="app-more-item" type="button">
       <span class="app-more-item-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
           <path d="M6 9a2 2 0 0 1 2-2h5l4-3v14l-4-3H8a2 2 0 0 1-2-2V9Z"></path>
@@ -3426,43 +3413,18 @@ function openLatestNotice(forceOpen=false,source="startup"){
 }
 
 function openUsageNotice(forceOpen=false, source="startup"){
-  usageNoticeOpenSource = source;
+  // v10：使用须知已停用。保留函数只为兼容旧调用。
   const mask = $("usageNoticeMask");
-  const check = $("usageNoticeSkipCheck");
-  const scroller = $("usageNoticeScroll");
-  if(!mask) return false;
-
-  pendingLatestNoticeAfterUsage = source === "startup";
-
-  try{
-    check.checked = persistentGetItem(USAGE_NOTICE_SKIP_KEY) === "1";
-  }catch(e){
-    check.checked = false;
-  }
-
-  if(!forceOpen && hasSkippedUsageNotice()){
-    mask.classList.add("hidden");
-    pendingLatestNoticeAfterUsage = false;
-    if(source === "startup"){
-      setTimeout(()=>openLatestNotice(false,"startup"),60);
-    }
-    return false;
-  }
-
-  mask.classList.remove("hidden");
-
-  // v9：打开后即可直接同意，不再要求滚动到底。
-  setUsageNoticeReadState(true);
-
-  if(scroller){
-    scroller.scrollTop = 0;
-  }
-
-  return true;
+  if(mask) mask.classList.add("hidden");
+  return false;
 }
 
 function initUsageNotice(){
-  openUsageNotice(false,"startup");
+  /*
+   * v10：使用须知功能已取消。
+   * 启动时不再显示使用须知，保留“更新公告”的原有提醒能力。
+   */
+  setTimeout(()=>openLatestNotice(false,"startup"),60);
 }
 
 function agreeUsageNotice(){
@@ -3621,12 +3583,6 @@ bindReliableTap($("announceEntryBtn"),()=>{
   closeMoreMenu();
   openLatestNotice(true,"more");
 });
-
-bindReliableTap($("noticeEntryBtn"),()=>{
-  closeMoreMenu();
-  openUsageNotice(true,"manual");
-});
-
 $("aboutSupportEntryBtn").addEventListener("click",()=>{
   closeMoreMenu();
   openSupportModal("more");
