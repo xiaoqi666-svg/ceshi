@@ -1816,6 +1816,47 @@ input, textarea, select{
 }
 </style>
 
+
+<style id="usage-notice-simple-v8">
+/*
+ * v8：完全取消“滚动到底识别”。
+ * 最终同意按钮直接位于正文物理最底部，只有真正滚到底才看得到。
+ */
+.usage-notice-final-zone{
+  padding:18px 0 12px!important;
+  position:relative!important;
+  z-index:30!important;
+  pointer-events:auto!important;
+}
+.usage-notice-final-agree{
+  display:block!important;
+  width:100%!important;
+  min-height:50px!important;
+  margin-top:10px!important;
+  border:0!important;
+  border-radius:13px!important;
+  background:#347fd8!important;
+  color:#fff!important;
+  font-family:inherit!important;
+  font-size:15px!important;
+  font-weight:600!important;
+  opacity:1!important;
+  pointer-events:auto!important;
+  touch-action:manipulation!important;
+  -webkit-user-select:none!important;
+  user-select:none!important;
+  -webkit-tap-highlight-color:rgba(255,255,255,.15)!important;
+  box-shadow:0 7px 18px rgba(52,127,216,.20)!important;
+}
+.usage-notice-final-agree:active{
+  transform:scale(.992)!important;
+  background:#2e73c6!important;
+}
+.usage-notice-actions{
+  grid-template-columns:1fr!important;
+}
+</style>
+
 </head>
 <body class="license-locked">
 
@@ -1840,27 +1881,17 @@ input, textarea, select{
 
         <p>使用软件所导致的一切后果都与开发者无关。</p>
 
-        <div class="usage-notice-end">
+        <div class="usage-notice-end usage-notice-final-zone">
           <div class="usage-notice-end-label">— 已阅读至底部 —</div>
-          <button id="usageNoticeBottomConfirmBtn"
-                  class="usage-notice-bottom-confirm"
-                  type="button"
-                  aria-pressed="false"
-                  ontouchstart="this.dataset.tcStartY=(event.touches&&event.touches[0]?event.touches[0].clientY:0)"
-                  ontouchend="var y=(event.changedTouches&&event.changedTouches[0]?event.changedTouches[0].clientY:0);var sy=Number(this.dataset.tcStartY||0);if(Math.abs(y-sy)<18){event.preventDefault();event.stopPropagation();confirmUsageNoticeBottom();}"
-                  onclick="event.preventDefault();event.stopPropagation();confirmUsageNoticeBottom();">
-            我已阅读到这里
+          <button id="usageNoticeAgreeBtn"
+                  class="usage-notice-btn usage-notice-agree usage-notice-final-agree"
+                  type="button">
+            我已知晓并同意
           </button>
         </div>
       </div>
     </div>
-
-    <div id="usageNoticeReadHint" class="usage-notice-read-hint">
-      <span class="usage-notice-read-arrow"></span>
-      <span id="usageNoticeReadText">请滑到正文底部并点击“我已阅读到这里”</span>
-    </div>
-
-    <label class="usage-notice-option">
+<label class="usage-notice-option">
       <input id="usageNoticeSkipCheck" type="checkbox">
       <span class="usage-notice-check"></span>
       <span>下次打开不再提醒</span>
@@ -1873,7 +1904,6 @@ input, textarea, select{
 
     <div class="usage-notice-actions">
       <button id="usageNoticeDisagreeBtn" class="usage-notice-btn usage-notice-disagree" type="button">不同意并退出</button>
-      <button id="usageNoticeAgreeBtn" class="usage-notice-btn usage-notice-agree is-locked" type="button" aria-disabled="true">请阅读至底部</button>
     </div>
   </div>
 </div>
@@ -3353,58 +3383,17 @@ let usageNoticeReadComplete = false;
 let pendingLatestNoticeAfterUsage = false;
 
 function resetUsageNoticeBottomConfirm(){
-  const btn = $("usageNoticeBottomConfirmBtn");
-  if(!btn) return;
-
-  btn.classList.remove("is-confirmed");
-  btn.setAttribute("aria-pressed","false");
-  btn.textContent = "我已阅读到这里";
+  // v8：已取消中间确认按钮。
 }
 
 function confirmUsageNoticeBottom(){
-  const btn = $("usageNoticeBottomConfirmBtn");
-
-  if(btn){
-    btn.classList.add("is-confirmed");
-    btn.setAttribute("aria-pressed","true");
-    btn.textContent = "✓ 已完成阅读";
-  }
-
-  /*
-   * 这是 v6 的主判定逻辑：
-   * 用户能点击到这个按钮，就已经实际到达正文最底部。
-   * 不再依赖 iOS 的 scrollTop / scrollHeight 精度。
-   */
-  setUsageNoticeReadState(true);
+  // v8：兼容旧调用，直接走最终确认。
+  agreeUsageNotice();
 }
 
 function setUsageNoticeReadState(done){
-  usageNoticeReadComplete = !!done;
-
-  const btn = $("usageNoticeAgreeBtn");
-  const hint = $("usageNoticeReadHint");
-  const text = $("usageNoticeReadText");
-
-  if(btn){
-    /*
-     * 不再使用原生 disabled。
-     * iOS Safari/PWA 在滚动后动态切换 disabled 偶尔会出现按钮看似解锁但无法触发的问题。
-     */
-    btn.disabled = false;
-    btn.classList.toggle("is-locked", !usageNoticeReadComplete);
-    btn.setAttribute("aria-disabled", usageNoticeReadComplete ? "false" : "true");
-    btn.textContent = usageNoticeReadComplete ? "我已知晓并同意" : "请阅读至底部";
-  }
-
-  if(hint){
-    hint.classList.toggle("done", usageNoticeReadComplete);
-  }
-
-  if(text){
-    text.textContent = usageNoticeReadComplete
-      ? "已阅读完成，可以确认"
-      : "请滑到正文底部并点击“我已阅读到这里”";
-  }
+  // v8：不再使用滚动识别/解锁逻辑。
+  usageNoticeReadComplete = true;
 }
 
 function usageNoticeIsAtBottom(){
@@ -3561,25 +3550,15 @@ function openUsageNotice(forceOpen=false, source="startup"){
   }
 
   mask.classList.remove("hidden");
-  setUsageNoticeReadState(false);
-  resetUsageNoticeBottomConfirm();
 
+  /*
+   * v8：只把正文回到顶部。
+   * 用户自然滚到正文最底部即可看到最终同意按钮。
+   */
   if(scroller){
     scroller.scrollTop = 0;
-
-    /*
-     * 弹窗显示后高度可能在接下来几帧才稳定，
-     * 连续做几次检查，兼容 iPhone PWA / safe-area / 动态字体。
-     */
-    requestAnimationFrame(()=>{
-      installUsageNoticeBottomObserver();
-      checkUsageNoticeScroll();
-
-      requestAnimationFrame(()=>checkUsageNoticeScroll());
-      setTimeout(()=>checkUsageNoticeScroll(),80);
-      setTimeout(()=>checkUsageNoticeScroll(),220);
-    });
   }
+
   return true;
 }
 
@@ -3588,16 +3567,6 @@ function initUsageNotice(){
 }
 
 function agreeUsageNotice(){
-  /*
-   * 点击时再做最后一次几何判断。
-   * 解决视觉已到底，但最后一次 scroll 事件没有触发的 iOS 情况。
-   */
-  if(!usageNoticeReadComplete){
-    checkUsageNoticeScroll();
-  }
-
-  if(!usageNoticeReadComplete) return;
-
   const mask = $("usageNoticeMask");
   const check = $("usageNoticeSkipCheck");
 
@@ -3657,24 +3626,6 @@ function exitAppFromUsageNotice(){
 
 $("usageNoticeAgreeBtn").addEventListener("click",agreeUsageNotice);
 $("usageNoticeDisagreeBtn").addEventListener("click",exitAppFromUsageNotice);
-
-const usageNoticeScroller = $("usageNoticeScroll");
-usageNoticeScroller.addEventListener("scroll",()=>{
-  checkUsageNoticeScroll();
-},{passive:true});
-
-/*
- * iOS momentum scroll 有时最后停下的位置不会产生我们期望的最后一次 scroll 回调。
- * touchend / pointerup 后再次判断。
- */
-usageNoticeScroller.addEventListener("touchend",()=>{
-  requestAnimationFrame(()=>checkUsageNoticeScroll());
-  setTimeout(()=>checkUsageNoticeScroll(),80);
-},{passive:true});
-
-usageNoticeScroller.addEventListener("pointerup",()=>{
-  requestAnimationFrame(()=>checkUsageNoticeScroll());
-},{passive:true});
 
 $("latestNoticeAcknowledgeBtn").addEventListener("click",acknowledgeLatestNotice);
 
@@ -4704,11 +4655,24 @@ if ("serviceWorker" in navigator && (location.protocol === "https:" || location.
     return null;
   }
 
+  let activeInteractiveTouch = false;
+
   document.addEventListener("touchstart", function(event){
     if(!event.touches || event.touches.length !== 1){
       activeScroller = null;
+      activeInteractiveTouch = false;
       return;
     }
+
+    const target = event.target && event.target.nodeType === 1
+      ? event.target
+      : (event.target ? event.target.parentElement : null);
+
+    activeInteractiveTouch = !!(
+      target &&
+      target.closest &&
+      target.closest("button, input, textarea, select, label, a, [role='button']")
+    );
 
     lastY = event.touches[0].clientY;
     activeScroller = findScroller(event.target);
@@ -4722,6 +4686,14 @@ if ("serviceWorker" in navigator && (location.protocol === "https:" || location.
     const currentY = event.touches[0].clientY;
     const deltaY = currentY - lastY;
     lastY = currentY;
+
+    /*
+     * 交互控件上的触摸优先保证原生点击。
+     * 不让防回弹逻辑通过 preventDefault 吞掉 button click。
+     */
+    if(activeInteractiveTouch){
+      return;
+    }
 
     if(!activeScroller){
       event.preventDefault();
@@ -4743,10 +4715,12 @@ if ("serviceWorker" in navigator && (location.protocol === "https:" || location.
 
   document.addEventListener("touchend", function(){
     activeScroller = null;
+    activeInteractiveTouch = false;
   }, {passive:true, capture:true});
 
   document.addEventListener("touchcancel", function(){
     activeScroller = null;
+    activeInteractiveTouch = false;
   }, {passive:true, capture:true});
 
   try{
