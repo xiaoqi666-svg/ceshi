@@ -1799,6 +1799,23 @@ input, textarea, select{
 }
 </style>
 
+
+<style id="usage-notice-buttonfix-v7">
+.usage-notice-bottom-confirm{
+  position:relative!important;
+  z-index:20!important;
+  pointer-events:auto!important;
+  touch-action:manipulation!important;
+  -webkit-user-select:none!important;
+  user-select:none!important;
+}
+.usage-notice-end{
+  position:relative!important;
+  z-index:10!important;
+  pointer-events:auto!important;
+}
+</style>
+
 </head>
 <body class="license-locked">
 
@@ -1828,7 +1845,10 @@ input, textarea, select{
           <button id="usageNoticeBottomConfirmBtn"
                   class="usage-notice-bottom-confirm"
                   type="button"
-                  aria-pressed="false">
+                  aria-pressed="false"
+                  ontouchstart="this.dataset.tcStartY=(event.touches&&event.touches[0]?event.touches[0].clientY:0)"
+                  ontouchend="var y=(event.changedTouches&&event.changedTouches[0]?event.changedTouches[0].clientY:0);var sy=Number(this.dataset.tcStartY||0);if(Math.abs(y-sy)<18){event.preventDefault();event.stopPropagation();confirmUsageNoticeBottom();}"
+                  onclick="event.preventDefault();event.stopPropagation();confirmUsageNoticeBottom();">
             我已阅读到这里
           </button>
         </div>
@@ -3638,25 +3658,6 @@ function exitAppFromUsageNotice(){
 $("usageNoticeAgreeBtn").addEventListener("click",agreeUsageNotice);
 $("usageNoticeDisagreeBtn").addEventListener("click",exitAppFromUsageNotice);
 
-const usageNoticeBottomConfirmBtn = $("usageNoticeBottomConfirmBtn");
-if(usageNoticeBottomConfirmBtn){
-  let usageBottomLastPointer = 0;
-
-  usageNoticeBottomConfirmBtn.addEventListener("pointerup",(event)=>{
-    if(event.pointerType === "touch" || event.pointerType === "pen"){
-      usageBottomLastPointer = Date.now();
-      event.preventDefault();
-      confirmUsageNoticeBottom();
-    }
-  });
-
-  usageNoticeBottomConfirmBtn.addEventListener("click",(event)=>{
-    if(Date.now() - usageBottomLastPointer < 700) return;
-    event.preventDefault();
-    confirmUsageNoticeBottom();
-  });
-}
-
 const usageNoticeScroller = $("usageNoticeScroll");
 usageNoticeScroller.addEventListener("scroll",()=>{
   checkUsageNoticeScroll();
@@ -4775,15 +4776,6 @@ if ("serviceWorker" in navigator && (location.protocol === "https:" || location.
     }
   }, {passive:false, capture:true});
 
-  // Prevent double-tap zoom without interfering with ordinary single taps.
-  let lastTouchEnd = 0;
-  document.addEventListener("touchend", function(event){
-    const now = Date.now();
-    if(now - lastTouchEnd <= 300){
-      event.preventDefault();
-    }
-    lastTouchEnd = now;
-  }, {passive:false, capture:true});
 })();
 </script>
 
