@@ -1,4 +1,4 @@
-const CACHE_NAME = "todaycampus-pwa-v8-notice-simple";
+const CACHE_NAME = "todaycampus-pwa-v9-notice-nogate";
 const APP_SHELL = [
   "./",
   "./index.html",
