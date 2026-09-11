@@ -1726,6 +1726,28 @@ select{
 }
 </style>
 
+
+<style id="usage-notice-ios-bottom-fix-v4">
+/*
+ * iPhone PWA 使用须知到底解锁修复：
+ * 不再依赖原生 disabled，避免 Safari 在动态切换 disabled 后触摸状态异常。
+ */
+.usage-notice-agree.is-locked{
+  background:#b9c9da!important;
+  box-shadow:none!important;
+  color:#f6f8fa!important;
+  cursor:default!important;
+  opacity:1!important;
+}
+.usage-notice-agree.is-locked:active{
+  transform:none!important;
+}
+.usage-notice-agree:not(.is-locked){
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:rgba(40,127,230,.12);
+}
+</style>
+
 </head>
 <body class="license-locked">
 
@@ -1772,7 +1794,7 @@ select{
 
     <div class="usage-notice-actions">
       <button id="usageNoticeDisagreeBtn" class="usage-notice-btn usage-notice-disagree" type="button">不同意并退出</button>
-      <button id="usageNoticeAgreeBtn" class="usage-notice-btn usage-notice-agree" type="button" disabled>请阅读至底部</button>
+      <button id="usageNoticeAgreeBtn" class="usage-notice-btn usage-notice-agree is-locked" type="button" aria-disabled="true">请阅读至底部</button>
     </div>
   </div>
 </div>
@@ -3253,29 +3275,128 @@ let pendingLatestNoticeAfterUsage = false;
 
 function setUsageNoticeReadState(done){
   usageNoticeReadComplete = !!done;
+
   const btn = $("usageNoticeAgreeBtn");
   const hint = $("usageNoticeReadHint");
   const text = $("usageNoticeReadText");
-  if(!btn) return;
 
-  btn.disabled = !usageNoticeReadComplete;
-  btn.textContent = usageNoticeReadComplete ? "我已知晓并同意" : "请阅读至底部";
+  if(btn){
+    /*
+     * 不再使用原生 disabled。
+     * iOS Safari/PWA 在滚动后动态切换 disabled 偶尔会出现按钮看似解锁但无法触发的问题。
+     */
+    btn.disabled = false;
+    btn.classList.toggle("is-locked", !usageNoticeReadComplete);
+    btn.setAttribute("aria-disabled", usageNoticeReadComplete ? "false" : "true");
+    btn.textContent = usageNoticeReadComplete ? "我已知晓并同意" : "请阅读至底部";
+  }
 
   if(hint){
     hint.classList.toggle("done", usageNoticeReadComplete);
   }
+
   if(text){
-    text.textContent = usageNoticeReadComplete ? "已阅读完成，可以确认" : "请向下阅读至底部后再确认";
+    text.textContent = usageNoticeReadComplete
+      ? "已阅读完成，可以确认"
+      : "请向下阅读至底部后再确认";
   }
 }
 
-function checkUsageNoticeScroll(){
+function usageNoticeIsAtBottom(){
   const scroller = $("usageNoticeScroll");
-  if(!scroller || usageNoticeReadComplete) return;
+  if(!scroller) return false;
 
-  const reachedBottom = scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 4;
-  if(reachedBottom){
+  /*
+   * iPhone 上 scrollTop/clientHeight/scrollHeight 可能受：
+   * - DPR 小数像素
+   * - safe-area
+   * - 字体缩放
+   * - momentum scrolling
+   * 影响，视觉到底时仍可能差十几像素。
+   */
+  const dpr = Math.max(1, Number(window.devicePixelRatio) || 1);
+  const tolerance = Math.max(32, Math.ceil(dpr * 12));
+
+  const remaining =
+    scroller.scrollHeight -
+    scroller.clientHeight -
+    scroller.scrollTop;
+
+  if(scroller.scrollHeight <= scroller.clientHeight + tolerance){
+    return true;
+  }
+
+  if(remaining <= tolerance){
+    return true;
+  }
+
+  /*
+   * 第二套判断：直接观察正文最后的“已阅读至底部”标记。
+   * 即使 Safari 的 scrollHeight 计算存在误差，只要最后一行真正进入可视区，也视为完成。
+   */
+  const endMarker = scroller.querySelector(".usage-notice-end");
+  if(endMarker){
+    try{
+      const scrollRect = scroller.getBoundingClientRect();
+      const endRect = endMarker.getBoundingClientRect();
+
+      const markerReached =
+        endRect.top <= scrollRect.bottom + tolerance &&
+        endRect.bottom <= scrollRect.bottom + tolerance;
+
+      if(markerReached){
+        return true;
+      }
+    }catch(e){}
+  }
+
+  return false;
+}
+
+function checkUsageNoticeScroll(){
+  if(usageNoticeReadComplete) return true;
+
+  if(usageNoticeIsAtBottom()){
     setUsageNoticeReadState(true);
+    return true;
+  }
+
+  return false;
+}
+
+let usageNoticeBottomObserver = null;
+
+function installUsageNoticeBottomObserver(){
+  const scroller = $("usageNoticeScroll");
+  if(!scroller) return;
+
+  if(usageNoticeBottomObserver){
+    try{ usageNoticeBottomObserver.disconnect(); }catch(e){}
+    usageNoticeBottomObserver = null;
+  }
+
+  const endMarker = scroller.querySelector(".usage-notice-end");
+
+  if(endMarker && "IntersectionObserver" in window){
+    try{
+      usageNoticeBottomObserver = new IntersectionObserver((entries)=>{
+        for(const entry of entries){
+          if(entry.isIntersecting || entry.intersectionRatio > 0){
+            /*
+             * IntersectionObserver 在 iOS momentum scroll 下通常比 scrollHeight
+             * 计算更可靠。进入底部区域后再用统一函数确认。
+             */
+            requestAnimationFrame(()=>checkUsageNoticeScroll());
+          }
+        }
+      },{
+        root:scroller,
+        threshold:[0,0.01,0.25,0.5,1],
+        rootMargin:"0px 0px 48px 0px"
+      });
+
+      usageNoticeBottomObserver.observe(endMarker);
+    }catch(e){}
   }
 }
 
@@ -3333,7 +3454,19 @@ function openUsageNotice(forceOpen=false, source="startup"){
 
   if(scroller){
     scroller.scrollTop = 0;
-    requestAnimationFrame(()=>checkUsageNoticeScroll());
+
+    /*
+     * 弹窗显示后高度可能在接下来几帧才稳定，
+     * 连续做几次检查，兼容 iPhone PWA / safe-area / 动态字体。
+     */
+    requestAnimationFrame(()=>{
+      installUsageNoticeBottomObserver();
+      checkUsageNoticeScroll();
+
+      requestAnimationFrame(()=>checkUsageNoticeScroll());
+      setTimeout(()=>checkUsageNoticeScroll(),80);
+      setTimeout(()=>checkUsageNoticeScroll(),220);
+    });
   }
   return true;
 }
@@ -3343,6 +3476,14 @@ function initUsageNotice(){
 }
 
 function agreeUsageNotice(){
+  /*
+   * 点击时再做最后一次几何判断。
+   * 解决视觉已到底，但最后一次 scroll 事件没有触发的 iOS 情况。
+   */
+  if(!usageNoticeReadComplete){
+    checkUsageNoticeScroll();
+  }
+
   if(!usageNoticeReadComplete) return;
 
   const mask = $("usageNoticeMask");
@@ -3404,7 +3545,25 @@ function exitAppFromUsageNotice(){
 
 $("usageNoticeAgreeBtn").addEventListener("click",agreeUsageNotice);
 $("usageNoticeDisagreeBtn").addEventListener("click",exitAppFromUsageNotice);
-$("usageNoticeScroll").addEventListener("scroll",checkUsageNoticeScroll,{passive:true});
+
+const usageNoticeScroller = $("usageNoticeScroll");
+usageNoticeScroller.addEventListener("scroll",()=>{
+  checkUsageNoticeScroll();
+},{passive:true});
+
+/*
+ * iOS momentum scroll 有时最后停下的位置不会产生我们期望的最后一次 scroll 回调。
+ * touchend / pointerup 后再次判断。
+ */
+usageNoticeScroller.addEventListener("touchend",()=>{
+  requestAnimationFrame(()=>checkUsageNoticeScroll());
+  setTimeout(()=>checkUsageNoticeScroll(),80);
+},{passive:true});
+
+usageNoticeScroller.addEventListener("pointerup",()=>{
+  requestAnimationFrame(()=>checkUsageNoticeScroll());
+},{passive:true});
+
 $("latestNoticeAcknowledgeBtn").addEventListener("click",acknowledgeLatestNotice);
 
 function openMoreMenu(){
