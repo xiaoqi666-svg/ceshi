@@ -1762,6 +1762,43 @@ input, textarea, select{
 }
 </style>
 
+
+<style id="usage-notice-manual-confirm-v6">
+.usage-notice-end{
+  padding:12px 0 8px!important;
+  text-align:center;
+}
+.usage-notice-end-label{
+  margin-bottom:10px;
+  color:#a2a8ae;
+  font-size:11px;
+  letter-spacing:.2px;
+}
+.usage-notice-bottom-confirm{
+  width:100%;
+  min-height:46px;
+  border:1px solid #dbe8f7;
+  border-radius:12px;
+  background:#f3f8fe;
+  color:#347fd8;
+  font-family:inherit;
+  font-size:14px;
+  font-weight:600;
+  cursor:pointer;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:rgba(52,127,216,.12);
+}
+.usage-notice-bottom-confirm:active{
+  transform:scale(.992);
+  background:#eaf3fd;
+}
+.usage-notice-bottom-confirm.is-confirmed{
+  border-color:#d8eadf;
+  background:#eef8f1;
+  color:#4f9468;
+}
+</style>
+
 </head>
 <body class="license-locked">
 
@@ -1786,13 +1823,21 @@ input, textarea, select{
 
         <p>使用软件所导致的一切后果都与开发者无关。</p>
 
-        <div class="usage-notice-end">— 已阅读至底部 —</div>
+        <div class="usage-notice-end">
+          <div class="usage-notice-end-label">— 已阅读至底部 —</div>
+          <button id="usageNoticeBottomConfirmBtn"
+                  class="usage-notice-bottom-confirm"
+                  type="button"
+                  aria-pressed="false">
+            我已阅读到这里
+          </button>
+        </div>
       </div>
     </div>
 
     <div id="usageNoticeReadHint" class="usage-notice-read-hint">
       <span class="usage-notice-read-arrow"></span>
-      <span id="usageNoticeReadText">请向下阅读至底部后再确认</span>
+      <span id="usageNoticeReadText">请滑到正文底部并点击“我已阅读到这里”</span>
     </div>
 
     <label class="usage-notice-option">
@@ -3287,6 +3332,32 @@ function hasSkippedLatestNotice(){
 let usageNoticeReadComplete = false;
 let pendingLatestNoticeAfterUsage = false;
 
+function resetUsageNoticeBottomConfirm(){
+  const btn = $("usageNoticeBottomConfirmBtn");
+  if(!btn) return;
+
+  btn.classList.remove("is-confirmed");
+  btn.setAttribute("aria-pressed","false");
+  btn.textContent = "我已阅读到这里";
+}
+
+function confirmUsageNoticeBottom(){
+  const btn = $("usageNoticeBottomConfirmBtn");
+
+  if(btn){
+    btn.classList.add("is-confirmed");
+    btn.setAttribute("aria-pressed","true");
+    btn.textContent = "✓ 已完成阅读";
+  }
+
+  /*
+   * 这是 v6 的主判定逻辑：
+   * 用户能点击到这个按钮，就已经实际到达正文最底部。
+   * 不再依赖 iOS 的 scrollTop / scrollHeight 精度。
+   */
+  setUsageNoticeReadState(true);
+}
+
 function setUsageNoticeReadState(done){
   usageNoticeReadComplete = !!done;
 
@@ -3312,7 +3383,7 @@ function setUsageNoticeReadState(done){
   if(text){
     text.textContent = usageNoticeReadComplete
       ? "已阅读完成，可以确认"
-      : "请向下阅读至底部后再确认";
+      : "请滑到正文底部并点击“我已阅读到这里”";
   }
 }
 
@@ -3371,6 +3442,12 @@ function checkUsageNoticeScroll(){
   if(usageNoticeReadComplete) return true;
 
   if(usageNoticeIsAtBottom()){
+    const bottomBtn = $("usageNoticeBottomConfirmBtn");
+    if(bottomBtn){
+      bottomBtn.classList.add("is-confirmed");
+      bottomBtn.setAttribute("aria-pressed","true");
+      bottomBtn.textContent = "✓ 已完成阅读";
+    }
     setUsageNoticeReadState(true);
     return true;
   }
@@ -3465,6 +3542,7 @@ function openUsageNotice(forceOpen=false, source="startup"){
 
   mask.classList.remove("hidden");
   setUsageNoticeReadState(false);
+  resetUsageNoticeBottomConfirm();
 
   if(scroller){
     scroller.scrollTop = 0;
@@ -3559,6 +3637,25 @@ function exitAppFromUsageNotice(){
 
 $("usageNoticeAgreeBtn").addEventListener("click",agreeUsageNotice);
 $("usageNoticeDisagreeBtn").addEventListener("click",exitAppFromUsageNotice);
+
+const usageNoticeBottomConfirmBtn = $("usageNoticeBottomConfirmBtn");
+if(usageNoticeBottomConfirmBtn){
+  let usageBottomLastPointer = 0;
+
+  usageNoticeBottomConfirmBtn.addEventListener("pointerup",(event)=>{
+    if(event.pointerType === "touch" || event.pointerType === "pen"){
+      usageBottomLastPointer = Date.now();
+      event.preventDefault();
+      confirmUsageNoticeBottom();
+    }
+  });
+
+  usageNoticeBottomConfirmBtn.addEventListener("click",(event)=>{
+    if(Date.now() - usageBottomLastPointer < 700) return;
+    event.preventDefault();
+    confirmUsageNoticeBottom();
+  });
+}
 
 const usageNoticeScroller = $("usageNoticeScroll");
 usageNoticeScroller.addEventListener("scroll",()=>{
