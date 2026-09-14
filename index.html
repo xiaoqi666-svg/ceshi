@@ -1625,7 +1625,7 @@ html[data-nav-direction="back"]::view-transition-new(root){
 </style>
 
 
-<style id="ios-native-app-feel-v3">
+<style id="ios-appfeel-clean-v11">
 html{
   width:100%;
   height:100%;
@@ -1639,19 +1639,16 @@ body{
   margin:0;
   overflow:hidden!important;
   overscroll-behavior:none!important;
-  position:relative;
   -webkit-text-size-adjust:100%;
   -webkit-tap-highlight-color:transparent;
 }
 .app{
-  position:relative!important;
   width:100%!important;
   height:100%!important;
   height:100dvh!important;
   min-height:0!important;
   overflow:hidden!important;
   margin:0!important;
-  background:#fff;
 }
 .dashboard-page,
 .leave-type-page,
@@ -1664,19 +1661,8 @@ body{
   min-height:0!important;
   overflow-x:hidden!important;
   overflow-y:auto!important;
-  overscroll-behavior-x:none!important;
-  overscroll-behavior-y:none!important;
+  overscroll-behavior:none!important;
   -webkit-overflow-scrolling:touch;
-  touch-action:pan-y;
-  scrollbar-width:none;
-}
-.dashboard-page::-webkit-scrollbar,
-.leave-type-page::-webkit-scrollbar,
-.form-page::-webkit-scrollbar,
-.detail-page::-webkit-scrollbar{
-  width:0;
-  height:0;
-  display:none;
 }
 .activation-page{
   position:fixed!important;
@@ -1690,20 +1676,6 @@ body{
   overscroll-behavior:none!important;
   -webkit-overflow-scrolling:touch;
 }
-.usage-notice-scroll,
-.latest-notice-card,
-.support-modal-card,
-.app-more-sheet{
-  overscroll-behavior:contain!important;
-}
-.dashboard-tabs,
-.leave-type-tabs,
-.submit-wrap,
-.detail-bottom{
-  transform:translateZ(0);
-  -webkit-transform:translateZ(0);
-  backface-visibility:hidden;
-}
 button,
 [role="button"],
 .quick-item.actionable,
@@ -1711,61 +1683,233 @@ button,
   touch-action:manipulation;
   -webkit-tap-highlight-color:transparent;
 }
-body,
-.app,
-.dashboard-page,
-.leave-type-page,
-.form-page,
-.detail-page{
-  max-width:100vw;
-}
-input,
-textarea,
-select{
-  touch-action:auto;
-}
 </style>
 
 
-<style id="usage-notice-ios-bottom-fix-v4">
-/*
- * iPhone PWA 使用须知到底解锁修复：
- * 不再依赖原生 disabled，避免 Safari 在动态切换 disabled 后触摸状态异常。
- */
-.usage-notice-agree.is-locked{
-  background:#b9c9da!important;
-  box-shadow:none!important;
-  color:#f6f8fa!important;
-  cursor:default!important;
-  opacity:1!important;
-}
-.usage-notice-agree.is-locked:active{
-  transform:none!important;
-}
-.usage-notice-agree:not(.is-locked){
-  touch-action:manipulation;
-  -webkit-tap-highlight-color:rgba(40,127,230,.12);
-}
+<style id="ios-nozoom-clean-v11">
+input,textarea,select{font-size:16px!important}
+button,[role="button"]{touch-action:manipulation}
 </style>
 
 
-<style id="ios-disable-zoom-v5">
-html, body, .app{
-  touch-action:pan-x pan-y;
+<style id="activation-agreement-v12-style">
+.activation-agreement-row{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  width:100%;
+  margin:15px 0 2px;
+  padding:2px 0;
+  color:#8e9298;
+  font-size:13px;
+  line-height:1.55;
+  transition:.18s ease;
 }
-input, textarea, select, button{
+.activation-agreement-row.needs-confirm{
+  animation:agreementShakeV12 .28s ease;
+}
+.activation-agreement-check-label{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex:none;
+  width:28px;
+  height:28px;
+  cursor:pointer;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+}
+.activation-agreement-native{
+  position:absolute;
+  width:1px;
+  height:1px;
+  opacity:0;
+  pointer-events:none;
+}
+.activation-agreement-circle{
+  position:relative;
+  width:22px;
+  height:22px;
+  box-sizing:border-box;
+  border:1.5px solid #c7ccd2;
+  border-radius:50%;
+  background:#fff;
+  transition:.16s ease;
+}
+.activation-agreement-native:checked + .activation-agreement-circle{
+  border-color:#287fe6;
+  background:#287fe6;
+}
+.activation-agreement-native:checked + .activation-agreement-circle::after{
+  content:"";
+  position:absolute;
+  left:5px;
+  top:5px;
+  width:9px;
+  height:5px;
+  border-left:2px solid #fff;
+  border-bottom:2px solid #fff;
+  transform:rotate(-45deg);
+}
+.activation-agreement-text{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:2px;
+  min-width:0;
+}
+.activation-agreement-prefix{
+  cursor:pointer;
   touch-action:manipulation;
 }
-/* iOS Safari can auto-zoom inputs below 16px. Force 16px minimum. */
-input, textarea, select{
-  font-size:16px!important;
+.activation-agreement-link{
+  border:0;
+  padding:1px 2px;
+  margin:0;
+  background:transparent;
+  color:#245fa7;
+  font-family:inherit;
+  font-size:inherit;
+  line-height:inherit;
+  cursor:pointer;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:rgba(36,95,167,.12);
+}
+.activation-agreement-link:active{
+  opacity:.65;
+}
+.activation-agreement-row.needs-confirm .activation-agreement-circle{
+  border-color:#e45d5d;
+  box-shadow:0 0 0 3px rgba(228,93,93,.08);
+}
+@keyframes agreementShakeV12{
+  0%,100%{transform:translateX(0)}
+  30%{transform:translateX(-4px)}
+  65%{transform:translateX(4px)}
+}
+
+.activation-agreement-mask{
+  position:fixed;
+  inset:0;
+  z-index:30000;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:18px;
+  background:rgba(22,29,38,.44);
+  -webkit-backdrop-filter:blur(2px);
+  backdrop-filter:blur(2px);
+}
+.activation-agreement-mask.hidden{
+  display:none!important;
+}
+.activation-agreement-card{
+  display:flex;
+  flex-direction:column;
+  width:min(100%,430px);
+  max-height:min(76dvh,680px);
+  overflow:hidden;
+  border-radius:16px;
+  background:#fff;
+  box-shadow:0 20px 60px rgba(0,0,0,.20);
+}
+.activation-agreement-head{
+  position:relative;
+  flex:none;
+  padding:18px 52px 14px 20px;
+  border-bottom:1px solid #eef0f2;
+}
+.activation-agreement-title{
+  color:#20242a;
+  font-size:18px;
+  font-weight:750;
+}
+.activation-agreement-close{
+  position:absolute;
+  top:10px;
+  right:12px;
+  width:38px;
+  height:38px;
+  border:0;
+  border-radius:50%;
+  background:transparent;
+  color:#9298a0;
+  font-size:27px;
+  line-height:38px;
+  cursor:pointer;
+  touch-action:manipulation;
+}
+.activation-agreement-body{
+  flex:1;
+  min-height:0;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  padding:18px 20px 22px;
+  color:#555d66;
+  font-size:13px;
+  line-height:1.82;
+}
+.activation-agreement-body h3{
+  margin:15px 0 7px;
+  color:#30363d;
+  font-size:14px;
+}
+.activation-agreement-body h3:first-child{
+  margin-top:0;
+}
+.activation-agreement-body p{
+  margin:0 0 12px;
+}
+.activation-agreement-body ul{
+  margin:0 0 12px;
+  padding-left:20px;
+}
+.activation-agreement-footer{
+  flex:none;
+  padding:12px 18px calc(12px + env(safe-area-inset-bottom));
+  border-top:1px solid #eef0f2;
+  background:#fff;
+}
+.activation-agreement-read-btn{
+  width:100%;
+  height:44px;
+  border:0;
+  border-radius:10px;
+  background:#287fe6;
+  color:#fff;
+  font-family:inherit;
+  font-size:14px;
+  font-weight:700;
+  cursor:pointer;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+}
+.activation-agreement-read-btn:active{
+  transform:scale(.995);
 }
 </style>
 
 </head>
 <body class="license-locked">
 
-<div id="usageNoticeMask" class="usage-notice-mask" role="dialog" aria-modal="true" aria-labelledby="usageNoticeTitle">
+<div id="activationAgreementModal" class="activation-agreement-mask hidden" role="dialog" aria-modal="true" aria-labelledby="activationAgreementModalTitle">
+  <div class="activation-agreement-card">
+    <div class="activation-agreement-head">
+      <div id="activationAgreementModalTitle" class="activation-agreement-title">服务协议</div>
+      <button id="activationAgreementCloseBtn" class="activation-agreement-close" type="button" aria-label="关闭">×</button>
+    </div>
+    <div id="activationAgreementModalBody" class="activation-agreement-body"></div>
+    <div class="activation-agreement-footer">
+      <button id="activationAgreementReadBtn" class="activation-agreement-read-btn" type="button">我已阅读</button>
+    </div>
+  </div>
+</div>
+
+
+<div id="usageNoticeMask" class="usage-notice-mask hidden" role="dialog" aria-modal="true" aria-labelledby="usageNoticeTitle">
   <div class="usage-notice-card">
     <div class="usage-notice-head">
       <div class="usage-notice-badge">使用前确认</div>
@@ -1808,7 +1952,7 @@ input, textarea, select{
 
     <div class="usage-notice-actions">
       <button id="usageNoticeDisagreeBtn" class="usage-notice-btn usage-notice-disagree" type="button">不同意并退出</button>
-      <button id="usageNoticeAgreeBtn" class="usage-notice-btn usage-notice-agree is-locked" type="button" aria-disabled="true">请阅读至底部</button>
+      <button id="usageNoticeAgreeBtn" class="usage-notice-btn usage-notice-agree" type="button" disabled>请阅读至底部</button>
     </div>
   </div>
 </div>
@@ -1860,20 +2004,7 @@ input, textarea, select{
 <div id="appMoreMask" class="app-more-mask hidden">
   <div class="app-more-sheet" role="dialog" aria-modal="true" aria-label="更多">
     <div class="app-more-title">更多</div>
-
-    <button id="noticeEntryBtn" class="app-more-item" type="button">
-      <span class="app-more-item-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-          <path d="M7 4h7l3 3v13H7z"></path>
-          <path d="M14 4v4h4"></path>
-          <path d="M10 12h4M10 16h4"></path>
-        </svg>
-      </span>
-      <span>使用须知</span>
-      <span class="app-more-item-arrow">›</span>
-    </button>
-
-    <button id="announceEntryBtn" class="app-more-item" type="button">
+<button id="announceEntryBtn" class="app-more-item" type="button">
       <span class="app-more-item-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
           <path d="M6 9a2 2 0 0 1 2-2h5l4-3v14l-4-3H8a2 2 0 0 1-2-2V9Z"></path>
@@ -1982,6 +2113,19 @@ input, textarea, select{
     <div class="activation-label">请输入本机专属永久卡密</div>
     <textarea id="licenseInput" class="activation-input" spellcheck="false"
       autocomplete="off" autocapitalize="off" placeholder="粘贴卡密"></textarea>
+
+    <div id="activationAgreementRow" class="activation-agreement-row">
+      <label class="activation-agreement-check-label" for="activationAgreementCheck" aria-label="同意服务协议和隐私政策">
+        <input id="activationAgreementCheck" class="activation-agreement-native" type="checkbox">
+        <span class="activation-agreement-circle" aria-hidden="true"></span>
+      </label>
+      <div class="activation-agreement-text">
+        <label for="activationAgreementCheck" class="activation-agreement-prefix">已阅读并同意</label>
+        <button id="openServiceAgreementBtn" class="activation-agreement-link" type="button">服务协议</button>
+        <span>和</span>
+        <button id="openPrivacyPolicyBtn" class="activation-agreement-link" type="button">隐私政策</button>
+      </div>
+    </div>
 
     <button id="activateLicenseBtn" class="activation-btn" type="button">立即激活</button>
     <div id="activationState" class="activation-state"></div>
@@ -3289,128 +3433,29 @@ let pendingLatestNoticeAfterUsage = false;
 
 function setUsageNoticeReadState(done){
   usageNoticeReadComplete = !!done;
-
   const btn = $("usageNoticeAgreeBtn");
   const hint = $("usageNoticeReadHint");
   const text = $("usageNoticeReadText");
+  if(!btn) return;
 
-  if(btn){
-    /*
-     * 不再使用原生 disabled。
-     * iOS Safari/PWA 在滚动后动态切换 disabled 偶尔会出现按钮看似解锁但无法触发的问题。
-     */
-    btn.disabled = false;
-    btn.classList.toggle("is-locked", !usageNoticeReadComplete);
-    btn.setAttribute("aria-disabled", usageNoticeReadComplete ? "false" : "true");
-    btn.textContent = usageNoticeReadComplete ? "我已知晓并同意" : "请阅读至底部";
-  }
+  btn.disabled = !usageNoticeReadComplete;
+  btn.textContent = usageNoticeReadComplete ? "我已知晓并同意" : "请阅读至底部";
 
   if(hint){
     hint.classList.toggle("done", usageNoticeReadComplete);
   }
-
   if(text){
-    text.textContent = usageNoticeReadComplete
-      ? "已阅读完成，可以确认"
-      : "请向下阅读至底部后再确认";
+    text.textContent = usageNoticeReadComplete ? "已阅读完成，可以确认" : "请向下阅读至底部后再确认";
   }
-}
-
-function usageNoticeIsAtBottom(){
-  const scroller = $("usageNoticeScroll");
-  if(!scroller) return false;
-
-  /*
-   * iPhone 上 scrollTop/clientHeight/scrollHeight 可能受：
-   * - DPR 小数像素
-   * - safe-area
-   * - 字体缩放
-   * - momentum scrolling
-   * 影响，视觉到底时仍可能差十几像素。
-   */
-  const dpr = Math.max(1, Number(window.devicePixelRatio) || 1);
-  const tolerance = Math.max(32, Math.ceil(dpr * 12));
-
-  const remaining =
-    scroller.scrollHeight -
-    scroller.clientHeight -
-    scroller.scrollTop;
-
-  if(scroller.scrollHeight <= scroller.clientHeight + tolerance){
-    return true;
-  }
-
-  if(remaining <= tolerance){
-    return true;
-  }
-
-  /*
-   * 第二套判断：直接观察正文最后的“已阅读至底部”标记。
-   * 即使 Safari 的 scrollHeight 计算存在误差，只要最后一行真正进入可视区，也视为完成。
-   */
-  const endMarker = scroller.querySelector(".usage-notice-end");
-  if(endMarker){
-    try{
-      const scrollRect = scroller.getBoundingClientRect();
-      const endRect = endMarker.getBoundingClientRect();
-
-      const markerReached =
-        endRect.top <= scrollRect.bottom + tolerance &&
-        endRect.bottom <= scrollRect.bottom + tolerance;
-
-      if(markerReached){
-        return true;
-      }
-    }catch(e){}
-  }
-
-  return false;
 }
 
 function checkUsageNoticeScroll(){
-  if(usageNoticeReadComplete) return true;
-
-  if(usageNoticeIsAtBottom()){
-    setUsageNoticeReadState(true);
-    return true;
-  }
-
-  return false;
-}
-
-let usageNoticeBottomObserver = null;
-
-function installUsageNoticeBottomObserver(){
   const scroller = $("usageNoticeScroll");
-  if(!scroller) return;
+  if(!scroller || usageNoticeReadComplete) return;
 
-  if(usageNoticeBottomObserver){
-    try{ usageNoticeBottomObserver.disconnect(); }catch(e){}
-    usageNoticeBottomObserver = null;
-  }
-
-  const endMarker = scroller.querySelector(".usage-notice-end");
-
-  if(endMarker && "IntersectionObserver" in window){
-    try{
-      usageNoticeBottomObserver = new IntersectionObserver((entries)=>{
-        for(const entry of entries){
-          if(entry.isIntersecting || entry.intersectionRatio > 0){
-            /*
-             * IntersectionObserver 在 iOS momentum scroll 下通常比 scrollHeight
-             * 计算更可靠。进入底部区域后再用统一函数确认。
-             */
-            requestAnimationFrame(()=>checkUsageNoticeScroll());
-          }
-        }
-      },{
-        root:scroller,
-        threshold:[0,0.01,0.25,0.5,1],
-        rootMargin:"0px 0px 48px 0px"
-      });
-
-      usageNoticeBottomObserver.observe(endMarker);
-    }catch(e){}
+  const reachedBottom = scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 4;
+  if(reachedBottom){
+    setUsageNoticeReadState(true);
   }
 }
 
@@ -3440,64 +3485,20 @@ function openLatestNotice(forceOpen=false,source="startup"){
 }
 
 function openUsageNotice(forceOpen=false, source="startup"){
-  usageNoticeOpenSource = source;
+  // v11：使用须知永久停用，仅保留兼容函数。
   const mask = $("usageNoticeMask");
-  const check = $("usageNoticeSkipCheck");
-  const scroller = $("usageNoticeScroll");
-  if(!mask) return false;
-
-  pendingLatestNoticeAfterUsage = source === "startup";
-
-  try{
-    check.checked = persistentGetItem(USAGE_NOTICE_SKIP_KEY) === "1";
-  }catch(e){
-    check.checked = false;
-  }
-
-  if(!forceOpen && hasSkippedUsageNotice()){
-    mask.classList.add("hidden");
-    pendingLatestNoticeAfterUsage = false;
-    if(source === "startup"){
-      setTimeout(()=>openLatestNotice(false,"startup"),60);
-    }
-    return false;
-  }
-
-  mask.classList.remove("hidden");
-  setUsageNoticeReadState(false);
-
-  if(scroller){
-    scroller.scrollTop = 0;
-
-    /*
-     * 弹窗显示后高度可能在接下来几帧才稳定，
-     * 连续做几次检查，兼容 iPhone PWA / safe-area / 动态字体。
-     */
-    requestAnimationFrame(()=>{
-      installUsageNoticeBottomObserver();
-      checkUsageNoticeScroll();
-
-      requestAnimationFrame(()=>checkUsageNoticeScroll());
-      setTimeout(()=>checkUsageNoticeScroll(),80);
-      setTimeout(()=>checkUsageNoticeScroll(),220);
-    });
-  }
-  return true;
+  if(mask) mask.classList.add("hidden");
+  return false;
 }
 
 function initUsageNotice(){
-  openUsageNotice(false,"startup");
+  // v11：使用须知功能已停用。
+  const mask = $("usageNoticeMask");
+  if(mask) mask.classList.add("hidden");
+  return false;
 }
 
 function agreeUsageNotice(){
-  /*
-   * 点击时再做最后一次几何判断。
-   * 解决视觉已到底，但最后一次 scroll 事件没有触发的 iOS 情况。
-   */
-  if(!usageNoticeReadComplete){
-    checkUsageNoticeScroll();
-  }
-
   if(!usageNoticeReadComplete) return;
 
   const mask = $("usageNoticeMask");
@@ -3559,25 +3560,7 @@ function exitAppFromUsageNotice(){
 
 $("usageNoticeAgreeBtn").addEventListener("click",agreeUsageNotice);
 $("usageNoticeDisagreeBtn").addEventListener("click",exitAppFromUsageNotice);
-
-const usageNoticeScroller = $("usageNoticeScroll");
-usageNoticeScroller.addEventListener("scroll",()=>{
-  checkUsageNoticeScroll();
-},{passive:true});
-
-/*
- * iOS momentum scroll 有时最后停下的位置不会产生我们期望的最后一次 scroll 回调。
- * touchend / pointerup 后再次判断。
- */
-usageNoticeScroller.addEventListener("touchend",()=>{
-  requestAnimationFrame(()=>checkUsageNoticeScroll());
-  setTimeout(()=>checkUsageNoticeScroll(),80);
-},{passive:true});
-
-usageNoticeScroller.addEventListener("pointerup",()=>{
-  requestAnimationFrame(()=>checkUsageNoticeScroll());
-},{passive:true});
-
+$("usageNoticeScroll").addEventListener("scroll",checkUsageNoticeScroll,{passive:true});
 $("latestNoticeAcknowledgeBtn").addEventListener("click",acknowledgeLatestNotice);
 
 function openMoreMenu(){
@@ -4576,117 +4559,252 @@ if ("serviceWorker" in navigator && (location.protocol === "https:" || location.
 </script>
 
 
-<script id="ios-native-app-feel-script-v3">
+<script id="ios-nozoom-clean-script-v11">
 (function(){
   "use strict";
 
-  if(!("ontouchstart" in window) && !(navigator.maxTouchPoints > 0)){
-    return;
+  function stopGesture(event){
+    event.preventDefault();
   }
 
-  let activeScroller = null;
-  let lastY = 0;
+  document.addEventListener("gesturestart",stopGesture,{passive:false});
+  document.addEventListener("gesturechange",stopGesture,{passive:false});
+  document.addEventListener("gestureend",stopGesture,{passive:false});
 
-  function canScrollY(el){
-    if(!el || el === document.documentElement || el === document.body) return false;
-
-    const style = window.getComputedStyle(el);
-    const overflowY = style.overflowY;
-    const scrollableStyle = overflowY === "auto" || overflowY === "scroll";
-    return scrollableStyle && el.scrollHeight > el.clientHeight + 1;
-  }
-
-  function findScroller(node){
-    let el = node && node.nodeType === 1 ? node : (node ? node.parentElement : null);
-
-    while(el && el !== document.body && el !== document.documentElement){
-      if(canScrollY(el)) return el;
-      el = el.parentElement;
-    }
-    return null;
-  }
-
-  document.addEventListener("touchstart", function(event){
-    if(!event.touches || event.touches.length !== 1){
-      activeScroller = null;
-      return;
-    }
-
-    lastY = event.touches[0].clientY;
-    activeScroller = findScroller(event.target);
-  }, {passive:true, capture:true});
-
-  document.addEventListener("touchmove", function(event){
-    if(!event.touches || event.touches.length !== 1){
-      return;
-    }
-
-    const currentY = event.touches[0].clientY;
-    const deltaY = currentY - lastY;
-    lastY = currentY;
-
-    if(!activeScroller){
-      event.preventDefault();
-      return;
-    }
-
-    const maxScrollTop = Math.max(
-      0,
-      activeScroller.scrollHeight - activeScroller.clientHeight
-    );
-
-    const atTop = activeScroller.scrollTop <= 0;
-    const atBottom = activeScroller.scrollTop >= maxScrollTop - 1;
-
-    if((atTop && deltaY > 0) || (atBottom && deltaY < 0)){
+  document.addEventListener("touchmove",function(event){
+    /* 只禁止两指及以上；单指滚动、输入、激活按钮完全放行。 */
+    if(event.touches && event.touches.length > 1){
       event.preventDefault();
     }
-  }, {passive:false, capture:true});
-
-  document.addEventListener("touchend", function(){
-    activeScroller = null;
-  }, {passive:true, capture:true});
-
-  document.addEventListener("touchcancel", function(){
-    activeScroller = null;
-  }, {passive:true, capture:true});
-
-  try{
-    window.scrollTo(0,0);
-  }catch(e){}
+  },{passive:false});
 })();
 </script>
 
 
-<script id="ios-disable-zoom-script-v5">
+<script id="license-diagnostic-v11">
 (function(){
   "use strict";
 
-  function preventGesture(event){
-    event.preventDefault();
+  function decodeB64urlAscii(value){
+    try{
+      let s=(value||"").replace(/-/g,"+").replace(/_/g,"/");
+      while(s.length%4) s+="=";
+      return atob(s);
+    }catch(e){
+      return "";
+    }
   }
 
-  // iOS Safari / standalone PWA proprietary pinch gesture events.
-  document.addEventListener("gesturestart", preventGesture, {passive:false, capture:true});
-  document.addEventListener("gesturechange", preventGesture, {passive:false, capture:true});
-  document.addEventListener("gestureend", preventGesture, {passive:false, capture:true});
+  function format24(code){
+    const v=(code||"").replace(/[^0-9A-F]/gi,"").toUpperCase();
+    return v.length===24 ? v.match(/.{1,4}/g).join("-") : v;
+  }
 
-  // Standards fallback: block any multi-touch move used for pinch zoom.
-  document.addEventListener("touchmove", function(event){
-    if(event.touches && event.touches.length > 1){
-      event.preventDefault();
+  function getBoundDeviceFromCard(card){
+    try{
+      const normalized=(card||"").trim().replace(/\s+/g,"");
+      const parts=normalized.split(".");
+      if(parts.length!==3 || parts[0]!=="TC2") return "";
+      const payload=decodeB64urlAscii(parts[1]);
+      const m=payload.match(/^TCAMPUS\|PERMDEV\|([0-9A-F]{24})\|[0-9A-F]{24}$/);
+      return m ? m[1] : "";
+    }catch(e){
+      return "";
     }
-  }, {passive:false, capture:true});
+  }
 
-  // Prevent double-tap zoom without interfering with ordinary single taps.
-  let lastTouchEnd = 0;
-  document.addEventListener("touchend", function(event){
-    const now = Date.now();
-    if(now - lastTouchEnd <= 300){
-      event.preventDefault();
+  const state=document.getElementById("activationState");
+  const input=document.getElementById("licenseInput");
+  if(!state || !input || !window.MutationObserver) return;
+
+  let busy=false;
+  const observer=new MutationObserver(function(){
+    if(busy) return;
+    const text=state.textContent||"";
+
+    if(text.indexOf("该卡密绑定的设备与当前手机不一致")!==-1 &&
+       text.indexOf("卡密绑定：")===-1){
+      const bound=getBoundDeviceFromCard(input.value);
+      const current=(typeof CURRENT_DEVICE_CODE!=="undefined" ? CURRENT_DEVICE_CODE : "");
+
+      if(bound && current){
+        busy=true;
+        state.textContent =
+          "该卡密绑定的设备与当前手机不一致"
+          + "（卡密绑定："+format24(bound)
+          + "；当前："+format24(current)+"）";
+        busy=false;
+      }
     }
-    lastTouchEnd = now;
-  }, {passive:false, capture:true});
+  });
+
+  observer.observe(state,{childList:true,subtree:true,characterData:true});
+})();
+</script>
+
+
+<script id="activation-agreement-v12-script">
+(function(){
+  "use strict";
+
+  const serviceAgreementHtml = `
+    <h3>一、使用范围</h3>
+    <p>本软件用于软件开发、功能测试、界面演示及技术交流，不作为任何学校、单位、平台或其他机构的正式业务系统、官方凭证或证明材料。</p>
+
+    <h3>二、使用责任</h3>
+    <p>使用者应对自己的使用行为及由此产生的后果负责。请勿将本软件用于违法、违规、欺骗、冒用身份、伪造证明或其他不当用途。</p>
+
+    <h3>三、授权与设备绑定</h3>
+    <p>本版本采用本机设备码与授权卡密绑定的离线授权方式。卡密仅适用于其绑定的设备；更换设备、清除站点数据或系统环境发生变化时，可能需要重新授权。</p>
+
+    <h3>四、软件使用</h3>
+    <p>未经允许，请勿擅自传播、拆分、修改、转售软件或授权信息。因超出开发、测试和演示用途而产生的损失、纠纷、处罚或法律责任，由实际行为人自行承担。</p>
+
+    <h3>五、协议确认</h3>
+    <p>点击下方“我已阅读”仅表示关闭本协议页面。是否同意本协议，以激活页“已阅读并同意”勾选状态为准。</p>
+  `;
+
+  const privacyPolicyHtml = `
+    <h3>一、本机数据</h3>
+    <p>为实现离线授权，本版本会在当前浏览器或主屏幕 Web App 的本地存储中保存设备识别信息、授权状态以及软件正常运行所需的本地配置。</p>
+
+    <h3>二、用户填写内容</h3>
+    <p>软件中的自定义学校名称、表单内容和相关设置主要用于当前设备上的功能展示与本地使用。请不要填写不必要的敏感信息。</p>
+
+    <h3>三、网络与上传</h3>
+    <p>当前 PWA 版本的卡密验证为离线验证，授权校验本身不依赖后台账号系统。页面部署仍需要通过 HTTPS 站点加载程序文件。</p>
+
+    <h3>四、本地数据清除</h3>
+    <p>如果主动清除 Safari 网站数据、清除当前站点存储或浏览器系统删除了相关数据，设备码、激活状态或本地设置可能受到影响。</p>
+
+    <h3>五、政策确认</h3>
+    <p>点击下方“我已阅读”即可随时关闭本页面，不要求阅读到正文底部。是否同意本政策，以激活页的勾选状态为准。</p>
+  `;
+
+  function $(id){
+    return document.getElementById(id);
+  }
+
+  function openAgreement(type){
+    const mask = $("activationAgreementModal");
+    const title = $("activationAgreementModalTitle");
+    const body = $("activationAgreementModalBody");
+    if(!mask || !title || !body) return;
+
+    if(type === "privacy"){
+      title.textContent = "隐私政策";
+      body.innerHTML = privacyPolicyHtml;
+    }else{
+      title.textContent = "服务协议";
+      body.innerHTML = serviceAgreementHtml;
+    }
+
+    body.scrollTop = 0;
+    mask.classList.remove("hidden");
+  }
+
+  function closeAgreement(){
+    const mask = $("activationAgreementModal");
+    if(mask) mask.classList.add("hidden");
+  }
+
+  function showNeedAgreement(){
+    const row = $("activationAgreementRow");
+    const state = $("activationState");
+
+    if(row){
+      row.classList.remove("needs-confirm");
+      void row.offsetWidth;
+      row.classList.add("needs-confirm");
+      setTimeout(()=>row.classList.remove("needs-confirm"),500);
+    }
+
+    if(state){
+      state.textContent = "请先勾选并同意《服务协议》和《隐私政策》";
+      state.classList.remove("ok");
+      state.classList.add("error");
+    }
+  }
+
+  const serviceBtn = $("openServiceAgreementBtn");
+  const privacyBtn = $("openPrivacyPolicyBtn");
+  const readBtn = $("activationAgreementReadBtn");
+  const closeBtn = $("activationAgreementCloseBtn");
+  const mask = $("activationAgreementModal");
+  const check = $("activationAgreementCheck");
+
+  if(serviceBtn){
+    serviceBtn.addEventListener("click",function(event){
+      event.preventDefault();
+      event.stopPropagation();
+      openAgreement("service");
+    });
+  }
+
+  if(privacyBtn){
+    privacyBtn.addEventListener("click",function(event){
+      event.preventDefault();
+      event.stopPropagation();
+      openAgreement("privacy");
+    });
+  }
+
+  if(readBtn){
+    readBtn.addEventListener("click",function(event){
+      event.preventDefault();
+      closeAgreement();
+    });
+  }
+
+  if(closeBtn){
+    closeBtn.addEventListener("click",function(event){
+      event.preventDefault();
+      closeAgreement();
+    });
+  }
+
+  if(mask){
+    mask.addEventListener("click",function(event){
+      if(event.target === mask) closeAgreement();
+    });
+  }
+
+  if(check){
+    check.addEventListener("change",function(){
+      const row = $("activationAgreementRow");
+      if(row) row.classList.remove("needs-confirm");
+
+      const state = $("activationState");
+      if(this.checked && state &&
+         state.textContent.indexOf("请先勾选并同意") !== -1){
+        state.textContent = "";
+        state.classList.remove("error");
+      }
+    });
+  }
+
+  /*
+   * 不改动原来的 TC2/RSA 激活 click 处理。
+   * 未勾选时在 capture 阶段提前拦截；
+   * 已勾选时完全放行，继续执行原来的卡密验证代码。
+   */
+  document.addEventListener("click",function(event){
+    const target = event.target && event.target.closest
+      ? event.target.closest("#activateLicenseBtn")
+      : null;
+
+    if(!target) return;
+
+    const agreement = $("activationAgreementCheck");
+    if(!agreement || !agreement.checked){
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      showNeedAgreement();
+    }
+  },true);
+
+  window.openActivationAgreement = openAgreement;
 })();
 </script>
 
