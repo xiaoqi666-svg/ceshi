@@ -2661,23 +2661,71 @@ function persistentRemoveItem(key){
 const PWA_STATE_DB_NAME = "todayCampusPwaState_v3";
 const PWA_STATE_STORE_NAME = "kv";
 const PWA_STATE_CACHE_NAME = "todaycampus-critical-state-v3";
+const PWA_STORAGE_TIMEOUT_MS = 450;
+
+function pwaWithTimeout(promise, timeoutMs=PWA_STORAGE_TIMEOUT_MS, fallback=null){
+  return new Promise(resolve=>{
+    let settled = false;
+
+    const timer = setTimeout(()=>{
+      if(settled) return;
+      settled = true;
+      resolve(fallback);
+    }, Math.max(50, Number(timeoutMs) || PWA_STORAGE_TIMEOUT_MS));
+
+    Promise.resolve(promise).then(value=>{
+      if(settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(value);
+    }).catch(()=>{
+      if(settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(fallback);
+    });
+  });
+}
 
 function openPwaStateDb(){
   return new Promise(resolve=>{
-    try{
-      if(!window.indexedDB) return resolve(null);
-      const req = indexedDB.open(PWA_STATE_DB_NAME,1);
-      req.onupgradeneeded = ()=>{
-        const db = req.result;
-        if(!db.objectStoreNames.contains(PWA_STATE_STORE_NAME)){
-          db.createObjectStore(PWA_STATE_STORE_NAME);
+    let finished = false;
+    let timer = null;
+
+    function done(value){
+      if(finished){
+        if(value && typeof value.close === "function"){
+          try{ value.close(); }catch(e){}
         }
+        return;
+      }
+
+      finished = true;
+      if(timer) clearTimeout(timer);
+      resolve(value || null);
+    }
+
+    try{
+      if(!window.indexedDB) return done(null);
+
+      timer = setTimeout(()=>done(null), PWA_STORAGE_TIMEOUT_MS);
+
+      const req = indexedDB.open(PWA_STATE_DB_NAME,1);
+
+      req.onupgradeneeded = ()=>{
+        try{
+          const db = req.result;
+          if(!db.objectStoreNames.contains(PWA_STATE_STORE_NAME)){
+            db.createObjectStore(PWA_STATE_STORE_NAME);
+          }
+        }catch(e){}
       };
-      req.onsuccess = ()=>resolve(req.result);
-      req.onerror = ()=>resolve(null);
-      req.onblocked = ()=>resolve(null);
+
+      req.onsuccess = ()=>done(req.result);
+      req.onerror = ()=>done(null);
+      req.onblocked = ()=>done(null);
     }catch(e){
-      resolve(null);
+      done(null);
     }
   });
 }
@@ -2797,11 +2845,14 @@ async function pwaStateCacheRemove(key){
 async function writeCriticalPersistentItem(key,value){
   const k = String(key||"");
   const v = String(value == null ? "" : value);
-  persistentSetItem(k,v);
+
+  try{ persistentSetItem(k,v); }catch(e){}
+
   await Promise.allSettled([
-    pwaStateIdbSet(k,v),
-    pwaStateCacheSet(k,v)
+    pwaWithTimeout(pwaStateIdbSet(k,v),PWA_STORAGE_TIMEOUT_MS,false),
+    pwaWithTimeout(pwaStateCacheSet(k,v),PWA_STORAGE_TIMEOUT_MS,false)
   ]);
+
   return v;
 }
 
@@ -2809,28 +2860,44 @@ async function readCriticalPersistentItem(key){
   const k = String(key||"");
   let value = null;
 
+  /* 快路径：同步本地存储。 */
   try{ value = persistentGetItem(k); }catch(e){}
+
   if(value !== null && value !== undefined && String(value) !== ""){
     const v = String(value);
+
     Promise.allSettled([
-      pwaStateIdbSet(k,v),
-      pwaStateCacheSet(k,v)
+      pwaWithTimeout(pwaStateIdbSet(k,v),PWA_STORAGE_TIMEOUT_MS,false),
+      pwaWithTimeout(pwaStateCacheSet(k,v),PWA_STORAGE_TIMEOUT_MS,false)
     ]).catch(()=>{});
+
     return v;
   }
 
-  value = await pwaStateIdbGet(k);
+  /* iOS 上任何异步存储最多等待 450ms。 */
+  value = await pwaWithTimeout(
+    pwaStateIdbGet(k),
+    PWA_STORAGE_TIMEOUT_MS,
+    null
+  );
+
   if(value === null || value === undefined || String(value) === ""){
-    value = await pwaStateCacheGet(k);
+    value = await pwaWithTimeout(
+      pwaStateCacheGet(k),
+      PWA_STORAGE_TIMEOUT_MS,
+      null
+    );
   }
 
   if(value !== null && value !== undefined && String(value) !== ""){
     const v = String(value);
     try{ persistentSetItem(k,v); }catch(e){}
+
     Promise.allSettled([
-      pwaStateIdbSet(k,v),
-      pwaStateCacheSet(k,v)
+      pwaWithTimeout(pwaStateIdbSet(k,v),PWA_STORAGE_TIMEOUT_MS,false),
+      pwaWithTimeout(pwaStateCacheSet(k,v),PWA_STORAGE_TIMEOUT_MS,false)
     ]).catch(()=>{});
+
     return v;
   }
 
@@ -2846,10 +2913,14 @@ async function removeCriticalPersistentItem(key){
   ]);
 }
 
-async function requestPwaPersistentStorage(){
+function requestPwaPersistentStorage(){
+  /*
+   * persist() 只是额外持久化申请，绝不能阻塞设备码生成。
+   * 某些 iOS/WKWebView 环境可能长时间不 resolve。
+   */
   try{
     if(navigator.storage && navigator.storage.persist){
-      await navigator.storage.persist();
+      Promise.resolve(navigator.storage.persist()).catch(()=>{});
     }
   }catch(e){}
 }
@@ -3164,7 +3235,13 @@ async function getOrCreateFallbackSeedPersistent(){
   }
 
   const seed = randomHex(32);
-  await writeCriticalPersistentItem(FALLBACK_DEVICE_SEED_KEY,seed);
+
+  /* 先写同步本地存储，设备码马上可以计算和显示。 */
+  try{ persistentSetItem(FALLBACK_DEVICE_SEED_KEY,seed); }catch(e){}
+
+  /* IDB/Cache 只负责后台备份。 */
+  writeCriticalPersistentItem(FALLBACK_DEVICE_SEED_KEY,seed).catch(()=>{});
+
   return seed;
 }
 function formatDeviceCode(code){
@@ -4587,10 +4664,9 @@ $("backBtn").addEventListener("click", ()=>{
 
 async function bootTodayCampusPwa(){
   /*
-   * iPhone PWA 启动时先请求持久化存储，再读取设备码与卡密。
-   * 是否授予由浏览器决定；不支持时会自动降级。
+   * v14：persist() 在后台请求，不再挡住设备码初始化。
    */
-  await requestPwaPersistentStorage();
+  requestPwaPersistentStorage();
 
   initUsageNotice();
   renderLeaveRecords();
@@ -4913,6 +4989,30 @@ if ("serviceWorker" in navigator && (location.protocol === "https:" || location.
   document.addEventListener("dblclick",function(event){
     event.preventDefault();
   },{passive:false,capture:true});
+})();
+</script>
+
+
+<script id="device-code-watchdog-v14">
+(function(){
+  "use strict";
+
+  setTimeout(function(){
+    try{
+      if(typeof CURRENT_DEVICE_CODE !== "undefined" && CURRENT_DEVICE_CODE) return;
+
+      const text = document.getElementById("deviceCodeText");
+      const mode = document.getElementById("deviceCodeModeText");
+
+      if(text && (text.textContent || "").indexOf("正在") !== -1){
+        text.textContent = "正在完成本机绑定…";
+      }
+
+      if(mode){
+        mode.textContent = "正在使用本地备用方式生成设备码，请稍候";
+      }
+    }catch(e){}
+  },2500);
 })();
 </script>
 

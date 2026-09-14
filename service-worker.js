@@ -1,4 +1,4 @@
-const CACHE_NAME = "todaycampus-pwa-v13-final-nozoom";
+const CACHE_NAME = "todaycampus-pwa-v14-devicecode-robust";
 const APP_SHELL = [
   "./",
   "./index.html",
