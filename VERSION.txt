@@ -1,0 +1,4 @@
+TodayCampus PWA
+Build: v6.1-agreement-checkbox
+Purpose: user agreement checkbox flow; no scroll-to-bottom requirement.
+Expected root files: index.html, service-worker.js, manifest.webmanifest, _headers, icons/
