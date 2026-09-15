@@ -1,4 +1,4 @@
-const CACHE_NAME = "todaycampus-pwa-v6-agreement-flow";
+const CACHE_NAME = "todaycampus-pwa-v7-ios-device-code";
 const APP_SHELL = [
   "./",
   "./index.html",

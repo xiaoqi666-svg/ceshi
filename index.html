@@ -2512,15 +2512,46 @@ function persistentRemoveItem(key){
 }
 
 
-/* ===== PWA 关键状态持久化 v3：localStorage + IndexedDB + Cache Storage 三重保存 ===== */
+/* ===== PWA 关键状态持久化 v4：localStorage 主存储 + 有超时的 IndexedDB / Cache 备份 ===== */
 const PWA_STATE_DB_NAME = "todayCampusPwaState_v3";
 const PWA_STATE_STORE_NAME = "kv";
 const PWA_STATE_CACHE_NAME = "todaycampus-critical-state-v3";
+const PWA_IDB_OPEN_TIMEOUT_MS = 450;
+const PWA_STORAGE_OPERATION_TIMEOUT_MS = 650;
+const PWA_CRITICAL_RECOVERY_TIMEOUT_MS = 700;
+
+function withPwaStorageTimeout(promise,fallbackValue,timeoutMs=PWA_STORAGE_OPERATION_TIMEOUT_MS){
+  return new Promise(resolve=>{
+    let settled = false;
+    const finish = value=>{
+      if(settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(value);
+    };
+    const timer = setTimeout(()=>finish(fallbackValue),Math.max(100,Number(timeoutMs)||PWA_STORAGE_OPERATION_TIMEOUT_MS));
+    Promise.resolve(promise).then(finish,()=>finish(fallbackValue));
+  });
+}
 
 function openPwaStateDb(){
   return new Promise(resolve=>{
+    let settled = false;
+    let timer = null;
+    const finish = db=>{
+      if(settled){
+        if(db){ try{ db.close(); }catch(e){} }
+        return;
+      }
+      settled = true;
+      if(timer) clearTimeout(timer);
+      resolve(db || null);
+    };
+
+    timer = setTimeout(()=>finish(null),PWA_IDB_OPEN_TIMEOUT_MS);
+
     try{
-      if(!window.indexedDB) return resolve(null);
+      if(!window.indexedDB) return finish(null);
       const req = indexedDB.open(PWA_STATE_DB_NAME,1);
       req.onupgradeneeded = ()=>{
         const db = req.result;
@@ -2528,11 +2559,11 @@ function openPwaStateDb(){
           db.createObjectStore(PWA_STATE_STORE_NAME);
         }
       };
-      req.onsuccess = ()=>resolve(req.result);
-      req.onerror = ()=>resolve(null);
-      req.onblocked = ()=>resolve(null);
+      req.onsuccess = ()=>finish(req.result);
+      req.onerror = ()=>finish(null);
+      req.onblocked = ()=>finish(null);
     }catch(e){
-      resolve(null);
+      finish(null);
     }
   });
 }
@@ -2540,17 +2571,27 @@ function openPwaStateDb(){
 async function pwaStateIdbGet(key){
   const db = await openPwaStateDb();
   if(!db) return null;
+
   return new Promise(resolve=>{
+    let settled = false;
+    let timer = null;
+    const finish = value=>{
+      if(settled) return;
+      settled = true;
+      if(timer) clearTimeout(timer);
+      try{ db.close(); }catch(e){}
+      resolve(value);
+    };
+    timer = setTimeout(()=>finish(null),PWA_STORAGE_OPERATION_TIMEOUT_MS);
     try{
       const tx = db.transaction(PWA_STATE_STORE_NAME,"readonly");
       const req = tx.objectStore(PWA_STATE_STORE_NAME).get(String(key||""));
-      req.onsuccess = ()=>resolve(req.result == null ? null : String(req.result));
-      req.onerror = ()=>resolve(null);
-      tx.oncomplete = ()=>{ try{ db.close(); }catch(e){} };
-      tx.onerror = ()=>{ try{ db.close(); }catch(e){} };
+      req.onsuccess = ()=>finish(req.result == null ? null : String(req.result));
+      req.onerror = ()=>finish(null);
+      tx.onerror = ()=>finish(null);
+      tx.onabort = ()=>finish(null);
     }catch(e){
-      try{ db.close(); }catch(_){}
-      resolve(null);
+      finish(null);
     }
   });
 }
@@ -2558,19 +2599,29 @@ async function pwaStateIdbGet(key){
 async function pwaStateIdbSet(key,value){
   const db = await openPwaStateDb();
   if(!db) return false;
+
   return new Promise(resolve=>{
+    let settled = false;
+    let timer = null;
+    const finish = value=>{
+      if(settled) return;
+      settled = true;
+      if(timer) clearTimeout(timer);
+      try{ db.close(); }catch(e){}
+      resolve(!!value);
+    };
+    timer = setTimeout(()=>finish(false),PWA_STORAGE_OPERATION_TIMEOUT_MS);
     try{
       const tx = db.transaction(PWA_STATE_STORE_NAME,"readwrite");
       tx.objectStore(PWA_STATE_STORE_NAME).put(
         String(value == null ? "" : value),
         String(key||"")
       );
-      tx.oncomplete = ()=>{ try{ db.close(); }catch(e){} resolve(true); };
-      tx.onerror = ()=>{ try{ db.close(); }catch(e){} resolve(false); };
-      tx.onabort = ()=>{ try{ db.close(); }catch(e){} resolve(false); };
+      tx.oncomplete = ()=>finish(true);
+      tx.onerror = ()=>finish(false);
+      tx.onabort = ()=>finish(false);
     }catch(e){
-      try{ db.close(); }catch(_){}
-      resolve(false);
+      finish(false);
     }
   });
 }
@@ -2578,16 +2629,26 @@ async function pwaStateIdbSet(key,value){
 async function pwaStateIdbRemove(key){
   const db = await openPwaStateDb();
   if(!db) return false;
+
   return new Promise(resolve=>{
+    let settled = false;
+    let timer = null;
+    const finish = value=>{
+      if(settled) return;
+      settled = true;
+      if(timer) clearTimeout(timer);
+      try{ db.close(); }catch(e){}
+      resolve(!!value);
+    };
+    timer = setTimeout(()=>finish(false),PWA_STORAGE_OPERATION_TIMEOUT_MS);
     try{
       const tx = db.transaction(PWA_STATE_STORE_NAME,"readwrite");
       tx.objectStore(PWA_STATE_STORE_NAME).delete(String(key||""));
-      tx.oncomplete = ()=>{ try{ db.close(); }catch(e){} resolve(true); };
-      tx.onerror = ()=>{ try{ db.close(); }catch(e){} resolve(false); };
-      tx.onabort = ()=>{ try{ db.close(); }catch(e){} resolve(false); };
+      tx.oncomplete = ()=>finish(true);
+      tx.onerror = ()=>finish(false);
+      tx.onabort = ()=>finish(false);
     }catch(e){
-      try{ db.close(); }catch(_){}
-      resolve(false);
+      finish(false);
     }
   });
 }
@@ -2604,59 +2665,79 @@ function pwaStateCacheUrl(key){
 }
 
 async function pwaStateCacheGet(key){
-  try{
-    if(!window.caches) return null;
-    const url = pwaStateCacheUrl(key);
-    if(!url) return null;
-    const cache = await caches.open(PWA_STATE_CACHE_NAME);
-    const response = await cache.match(url);
-    return response ? await response.text() : null;
-  }catch(e){
-    return null;
-  }
+  const task = (async()=>{
+    try{
+      if(!window.caches) return null;
+      const url = pwaStateCacheUrl(key);
+      if(!url) return null;
+      const cache = await caches.open(PWA_STATE_CACHE_NAME);
+      const response = await cache.match(url);
+      return response ? await response.text() : null;
+    }catch(e){
+      return null;
+    }
+  })();
+  return withPwaStorageTimeout(task,null,PWA_STORAGE_OPERATION_TIMEOUT_MS);
 }
 
 async function pwaStateCacheSet(key,value){
-  try{
-    if(!window.caches) return false;
-    const url = pwaStateCacheUrl(key);
-    if(!url) return false;
-    const cache = await caches.open(PWA_STATE_CACHE_NAME);
-    await cache.put(
-      url,
-      new Response(String(value == null ? "" : value),{
-        headers:{
-          "Content-Type":"text/plain;charset=UTF-8",
-          "Cache-Control":"no-store"
-        }
-      })
-    );
-    return true;
-  }catch(e){
-    return false;
-  }
+  const task = (async()=>{
+    try{
+      if(!window.caches) return false;
+      const url = pwaStateCacheUrl(key);
+      if(!url) return false;
+      const cache = await caches.open(PWA_STATE_CACHE_NAME);
+      await cache.put(
+        url,
+        new Response(String(value == null ? "" : value),{
+          headers:{
+            "Content-Type":"text/plain;charset=UTF-8",
+            "Cache-Control":"no-store"
+          }
+        })
+      );
+      return true;
+    }catch(e){
+      return false;
+    }
+  })();
+  return withPwaStorageTimeout(task,false,PWA_STORAGE_OPERATION_TIMEOUT_MS);
 }
 
 async function pwaStateCacheRemove(key){
-  try{
-    if(!window.caches) return false;
-    const url = pwaStateCacheUrl(key);
-    if(!url) return false;
-    const cache = await caches.open(PWA_STATE_CACHE_NAME);
-    return await cache.delete(url);
-  }catch(e){
-    return false;
-  }
+  const task = (async()=>{
+    try{
+      if(!window.caches) return false;
+      const url = pwaStateCacheUrl(key);
+      if(!url) return false;
+      const cache = await caches.open(PWA_STATE_CACHE_NAME);
+      return await cache.delete(url);
+    }catch(e){
+      return false;
+    }
+  })();
+  return withPwaStorageTimeout(task,false,PWA_STORAGE_OPERATION_TIMEOUT_MS);
+}
+
+function backupCriticalPersistentItem(key,value){
+  const k = String(key||"");
+  const v = String(value == null ? "" : value);
+  const task = Promise.allSettled([
+    pwaStateIdbSet(k,v),
+    pwaStateCacheSet(k,v)
+  ]);
+  return withPwaStorageTimeout(task,null,PWA_CRITICAL_RECOVERY_TIMEOUT_MS);
 }
 
 async function writeCriticalPersistentItem(key,value){
   const k = String(key||"");
   const v = String(value == null ? "" : value);
+
+  /* localStorage / Android SharedPreferences 是主路径，先同步写入。 */
   persistentSetItem(k,v);
-  await Promise.allSettled([
-    pwaStateIdbSet(k,v),
-    pwaStateCacheSet(k,v)
-  ]);
+
+  /* IndexedDB / Cache 仅作备份，并且有严格超时，绝不无限阻塞 UI。 */
+  await backupCriticalPersistentItem(k,v);
   return v;
 }
 
@@ -2664,28 +2745,30 @@ async function readCriticalPersistentItem(key){
   const k = String(key||"");
   let value = null;
 
+  /* 主路径优先；命中后立即返回，备份复制在后台进行。 */
   try{ value = persistentGetItem(k); }catch(e){}
   if(value !== null && value !== undefined && String(value) !== ""){
     const v = String(value);
-    Promise.allSettled([
-      pwaStateIdbSet(k,v),
-      pwaStateCacheSet(k,v)
-    ]).catch(()=>{});
+    backupCriticalPersistentItem(k,v).catch(()=>{});
     return v;
   }
 
-  value = await pwaStateIdbGet(k);
-  if(value === null || value === undefined || String(value) === ""){
-    value = await pwaStateCacheGet(k);
-  }
+  /* 主路径缺失时，并行尝试两份备份；整个恢复窗口最多约 700ms。 */
+  const recovered = await withPwaStorageTimeout(
+    Promise.all([pwaStateIdbGet(k),pwaStateCacheGet(k)]),
+    [null,null],
+    PWA_CRITICAL_RECOVERY_TIMEOUT_MS
+  );
+  const idbValue = recovered && recovered[0];
+  const cacheValue = recovered && recovered[1];
+  value = (idbValue !== null && idbValue !== undefined && String(idbValue) !== "")
+    ? idbValue
+    : cacheValue;
 
   if(value !== null && value !== undefined && String(value) !== ""){
     const v = String(value);
     try{ persistentSetItem(k,v); }catch(e){}
-    Promise.allSettled([
-      pwaStateIdbSet(k,v),
-      pwaStateCacheSet(k,v)
-    ]).catch(()=>{});
+    backupCriticalPersistentItem(k,v).catch(()=>{});
     return v;
   }
 
@@ -2695,16 +2778,18 @@ async function readCriticalPersistentItem(key){
 async function removeCriticalPersistentItem(key){
   const k = String(key||"");
   try{ persistentRemoveItem(k); }catch(e){}
-  await Promise.allSettled([
-    pwaStateIdbRemove(k),
-    pwaStateCacheRemove(k)
-  ]);
+  await withPwaStorageTimeout(
+    Promise.allSettled([pwaStateIdbRemove(k),pwaStateCacheRemove(k)]),
+    null,
+    PWA_CRITICAL_RECOVERY_TIMEOUT_MS
+  );
 }
 
-async function requestPwaPersistentStorage(){
+function requestPwaPersistentStorage(){
+  /* 这是锦上添花的浏览器权限请求，不允许阻塞设备码/激活页初始化。 */
   try{
     if(navigator.storage && navigator.storage.persist){
-      await navigator.storage.persist();
+      Promise.resolve(navigator.storage.persist()).catch(()=>{});
     }
   }catch(e){}
 }
@@ -2986,29 +3071,33 @@ function randomHex(bytes=32){
   for(const b of out) hex += b.toString(16).padStart(2,"0");
   return hex.toUpperCase();
 }
-function getOrCreateFallbackSeed(){
+function readLocalFallbackSeed(){
   try{
     const saved = String(persistentGetItem(FALLBACK_DEVICE_SEED_KEY) || "")
       .replace(/[^0-9a-fA-F]/g,"").toUpperCase();
-    if(/^[0-9A-F]{64}$/.test(saved)) return saved;
-  }catch(e){}
+    return /^[0-9A-F]{64}$/.test(saved) ? saved : "";
+  }catch(e){
+    return "";
+  }
+}
+function getOrCreateFallbackSeed(){
+  const saved = readLocalFallbackSeed();
+  if(saved) return saved;
 
   const seed = randomHex(32);
   try{ persistentSetItem(FALLBACK_DEVICE_SEED_KEY,seed); }catch(e){}
+  backupCriticalPersistentItem(FALLBACK_DEVICE_SEED_KEY,seed).catch(()=>{});
   return seed;
 }
 
 async function getOrCreateFallbackSeedPersistent(){
-  try{
-    const local = String(persistentGetItem(FALLBACK_DEVICE_SEED_KEY) || "")
-      .replace(/[^0-9a-fA-F]/g,"").toUpperCase();
+  const local = readLocalFallbackSeed();
+  if(local){
+    backupCriticalPersistentItem(FALLBACK_DEVICE_SEED_KEY,local).catch(()=>{});
+    return local;
+  }
 
-    if(/^[0-9A-F]{64}$/.test(local)){
-      writeCriticalPersistentItem(FALLBACK_DEVICE_SEED_KEY,local).catch(()=>{});
-      return local;
-    }
-  }catch(e){}
-
+  /* 尝试从旧备份恢复，但恢复有上限，不会让 iOS 永久卡住。 */
   const replicated = String(
     await readCriticalPersistentItem(FALLBACK_DEVICE_SEED_KEY) || ""
   ).replace(/[^0-9a-fA-F]/g,"").toUpperCase();
@@ -3018,8 +3107,10 @@ async function getOrCreateFallbackSeedPersistent(){
     return replicated;
   }
 
+  /* 首次生成：主存储同步落盘后立即返回，备份只在后台复制。 */
   const seed = randomHex(32);
-  await writeCriticalPersistentItem(FALLBACK_DEVICE_SEED_KEY,seed);
+  try{ persistentSetItem(FALLBACK_DEVICE_SEED_KEY,seed); }catch(e){}
+  backupCriticalPersistentItem(FALLBACK_DEVICE_SEED_KEY,seed).catch(()=>{});
   return seed;
 }
 function formatDeviceCode(code){
@@ -3073,21 +3164,74 @@ function finishDeviceCodeResolution(code,source){
   return CURRENT_DEVICE_CODE;
 }
 
+async function resolvePwaLocalDeviceCodeFast(){
+  /* 1) 已保存的稳定设备码：同步读取，最快路径。 */
+  const localCode = readStoredStableDeviceCode();
+  if(localCode){
+    return finishDeviceCodeResolution(localCode,CURRENT_DEVICE_SOURCE || "stored");
+  }
+
+  /* 2) 稳定码缺失但 seed 还在：直接重新计算，不访问 IndexedDB。 */
+  const localSeed = readLocalFallbackSeed();
+  if(localSeed){
+    const code = hashIdentityToDeviceCode(DEVICE_FALLBACK_PREFIX,localSeed);
+    return finishDeviceCodeResolution(code,"pwa_local");
+  }
+
+  /*
+   * 3) 兼容旧安装：并行从备份找稳定码 / 来源 / seed。
+   *    最多等待 PWA_CRITICAL_RECOVERY_TIMEOUT_MS，避免 WebKit 存储异常无限挂起。
+   */
+  const recovered = await withPwaStorageTimeout(
+    Promise.all([
+      readCriticalPersistentItem(STABLE_DEVICE_CODE_KEY),
+      readCriticalPersistentItem(DEVICE_CODE_SOURCE_KEY),
+      readCriticalPersistentItem(FALLBACK_DEVICE_SEED_KEY)
+    ]),
+    [null,null,null],
+    PWA_CRITICAL_RECOVERY_TIMEOUT_MS
+  );
+
+  const recoveredCode = String((recovered && recovered[0]) || "")
+    .replace(/[^0-9a-fA-F]/g,"").toUpperCase();
+  const recoveredSource = String((recovered && recovered[1]) || "stored");
+  const recoveredSeed = String((recovered && recovered[2]) || "")
+    .replace(/[^0-9a-fA-F]/g,"").toUpperCase();
+
+  if(/^[0-9A-F]{24}$/.test(recoveredCode)){
+    try{
+      persistentSetItem(STABLE_DEVICE_CODE_KEY,recoveredCode);
+      persistentSetItem(DEVICE_CODE_SOURCE_KEY,recoveredSource || "stored");
+    }catch(e){}
+    return finishDeviceCodeResolution(recoveredCode,recoveredSource || "stored");
+  }
+
+  if(/^[0-9A-F]{64}$/.test(recoveredSeed)){
+    try{ persistentSetItem(FALLBACK_DEVICE_SEED_KEY,recoveredSeed); }catch(e){}
+    const code = hashIdentityToDeviceCode(DEVICE_FALLBACK_PREFIX,recoveredSeed);
+    return finishDeviceCodeResolution(code,"pwa_local");
+  }
+
+  /* 4) 真正的首次安装：立即生成 seed，先写主存储，备份后台执行。 */
+  const seed = randomHex(32);
+  try{ persistentSetItem(FALLBACK_DEVICE_SEED_KEY,seed); }catch(e){}
+  backupCriticalPersistentItem(FALLBACK_DEVICE_SEED_KEY,seed).catch(()=>{});
+  const code = hashIdentityToDeviceCode(DEVICE_FALLBACK_PREFIX,seed);
+  return finishDeviceCodeResolution(code,"pwa_local");
+}
+
 async function forceGenerateDeviceCode(){
-  // 已有设备码时点击“生成”不做任何事情。
+  // 与启动识别共用同一个 Promise，避免首次启动与手动点击同时生成两个不同设备码。
   if(CURRENT_DEVICE_CODE) return CURRENT_DEVICE_CODE;
 
-  const stored = await readStoredStableDeviceCodePersistent();
-  if(stored){
-    return finishDeviceCodeResolution(stored,CURRENT_DEVICE_SOURCE || "stored");
+  if(deviceCodeReadyPromise){
+    const pendingResult = await deviceCodeReadyPromise;
+    if(pendingResult) return pendingResult;
+    deviceCodeReadyPromise = null;
   }
 
-  const fallbackCode = await createFallbackDeviceCodePersistent();
-  if(fallbackCode){
-    return finishDeviceCodeResolution(fallbackCode,"pwa_local");
-  }
-
-  return "";
+  deviceCodeResolutionFinalized = false;
+  return ensureDeviceCodeReady();
 }
 function sleep(ms){
   return new Promise(resolve=>setTimeout(resolve,ms));
@@ -3101,25 +3245,24 @@ function hasAndroidNativeDeviceBridge(){
 }
 
 async function resolveDeviceCodeWith3SecondFallback(){
-  const stored = await readStoredStableDeviceCodePersistent();
-  if(stored) return finishDeviceCodeResolution(stored,CURRENT_DEVICE_SOURCE || "stored");
+  /* 主存储命中时立即返回，不让任何 PWA 备份存储阻塞首屏。 */
+  const localStored = readStoredStableDeviceCode();
+  if(localStored){
+    return finishDeviceCodeResolution(localStored,CURRENT_DEVICE_SOURCE || "stored");
+  }
 
   let standardCode = tryResolveStandardDeviceCode();
   if(standardCode) return finishDeviceCodeResolution(standardCode,CURRENT_DEVICE_SOURCE);
 
   /*
    * Safari / iPhone PWA 无法读取 ANDROID_ID。
-   * 浏览器环境直接生成并保存本机稳定设备码，不再无意义等待 3 秒。
-   * 保持 24 位十六进制设备码与原 TC2 卡密格式兼容。
+   * 走 localStorage 主路径；备份恢复只有短超时，首次生成也不会等待 IndexedDB / Cache 写完。
    */
   if(!hasAndroidNativeDeviceBridge()){
-    const pwaCode = await createFallbackDeviceCodePersistent();
-    if(pwaCode) return finishDeviceCodeResolution(pwaCode,"pwa_local");
+    return resolvePwaLocalDeviceCodeFast();
   }
 
-  /*
-   * Android 原生壳仍保留短暂轮询，兼容原 NativeApp 桥接初始化时序。
-   */
+  /* Android 原生壳仍保留短暂轮询，兼容 NativeApp 桥接初始化时序。 */
   const startedAt = Date.now();
   while(Date.now() - startedAt < DEVICE_IDENTIFY_TIMEOUT_MS){
     if(CURRENT_DEVICE_CODE || deviceCodeResolutionFinalized) return CURRENT_DEVICE_CODE;
@@ -4385,10 +4528,10 @@ $("backBtn").addEventListener("click", ()=>{
 
 async function bootTodayCampusPwa(){
   /*
-   * iPhone PWA 启动时先请求持久化存储，再读取设备码与卡密。
-   * 是否授予由浏览器决定；不支持时会自动降级。
+   * 持久化存储权限只做后台请求，绝不再阻塞 iPhone 的设备码与激活页初始化。
+   * 是否授予由浏览器决定；不支持时自动降级。
    */
-  await requestPwaPersistentStorage();
+  requestPwaPersistentStorage();
 
   /* 用户协议不再在启动时自动弹出；仅在激活页或“更多”中按需打开。 */
   renderLeaveRecords();
