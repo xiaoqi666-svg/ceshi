@@ -1,4 +1,5 @@
 TodayCampus PWA
-Build: v6.1-agreement-checkbox
-Purpose: user agreement checkbox flow; no scroll-to-bottom requirement.
+Build: v7-ios-device-code-safe
+Base: v6.1-agreement-checkbox
+Purpose: iPhone/PWA device code generation no longer blocks on IndexedDB, Cache Storage, or storage.persist().
 Expected root files: index.html, service-worker.js, manifest.webmanifest, _headers, icons/
